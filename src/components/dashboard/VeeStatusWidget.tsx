@@ -1,0 +1,83 @@
+// src/components/dashboard/VeeStatusWidget.tsx
+import { useState, useEffect } from 'react';
+import { Activity, Info, CloudOff } from 'lucide-react';
+import VeeMascot from '@/components/mascot/VeeMascot';
+import { VeeHealthStatus } from '@/store/useStore';
+
+interface VeeStatusWidgetProps {
+  veeHealth: VeeHealthStatus;
+  veeWeight: number;
+  realScore?: number;
+  isSyncing?: boolean;
+}
+
+interface StatusData { score: number | string; text: string; color: string; advice: string; glow: string; }
+
+export default function VeeStatusWidget({ veeHealth, veeWeight, realScore, isSyncing = false }: VeeStatusWidgetProps) {
+  const [eyePosition, setEyePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isVeeBooped, setIsVeeBooped] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleEyeMove = (e: MouseEvent) => {
+      setEyePosition({ x: (e.clientX / window.innerWidth - 0.5) * 6, y: (e.clientY / window.innerHeight - 0.5) * 6 });
+    };
+    window.addEventListener('mousemove', handleEyeMove);
+    return () => window.removeEventListener('mousemove', handleEyeMove);
+  }, []);
+
+  const handleVeeClick = () => {
+    setIsVeeBooped(true); setTimeout(() => setIsVeeBooped(false), 300);
+  };
+
+  const healthData: Record<VeeHealthStatus, StatusData> = {
+    fresh: { score: 85, text: 'Sehat & Senang', color: 'text-[#1DB38A] bg-[#E6F7ED] dark:text-[#8CE0A7] dark:bg-[#1A2620]', advice: 'Vee kelihatan sangat sehat hari ini! Terus pertahankan rutinitas baikmu.', glow: 'rgba(140, 224, 167, 0.4)' },
+    tired: { score: 45, text: 'Kurang Tidur', color: 'text-[#4A7A8C] bg-[#EEF2F5] dark:text-[#8CAAB8] dark:bg-[#1A1D20]', advice: 'Vee kelihatan pucat dan punya kantong mata. Usahakan malam ini istirahat lebih awal ya.', glow: 'rgba(140, 170, 184, 0.4)' },
+    sick: { score: 30, text: 'Sakit', color: 'text-[#4A7A8C] bg-[#EEF2F5] dark:text-[#8CAAB8] dark:bg-[#1A1D20]', advice: 'Kondisi kesehatanmu sedang menurun drastis. Segera istirahat total ya!', glow: 'rgba(140, 170, 184, 0.4)' },
+    stressed: { score: 60, text: 'Banyak Pikiran', color: 'text-[#D96B2B] bg-[#FFF0E6] dark:text-[#FF9F66] dark:bg-[#2A1E18]', advice: 'Vee ikutan kepanasan gara-gara kamu lagi stres. Coba tarik napas dalam-dalam atau dengerin lagu santai.', glow: 'rgba(255, 159, 102, 0.4)' },
+    // 1. TAMBAHKAN DATA KHUSUS UNTUK WAITING (OFFLINE)
+    waiting: { score: '--', text: 'Menunggu Sync', color: 'text-[#647C73] bg-[#E8ECEA] dark:text-[#8CAAB8] dark:bg-[#1A1D20]', advice: 'Otak AI Vee sedang offline. Data aktivitasmu aman di perangkat dan akan dianalisis saat koneksi kembali.', glow: 'rgba(100, 124, 115, 0.2)' }
+  };
+
+  const currentStatus = healthData[veeHealth] || healthData['fresh'];
+  
+  // Jika offline (tidak ada realScore dan status waiting), tampilkan garis putus-putus
+  const displayScore = veeHealth === 'waiting' ? '--' : (realScore !== undefined ? Math.round(realScore) : currentStatus.score);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-[#1A1D1B] rounded-[28px] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.03)] flex items-center justify-between relative overflow-hidden hover:shadow-xl group" style={{ boxShadow: `0 8px 32px ${currentStatus.glow}` }}>
+        <div className="absolute -right-10 -top-10 w-32 h-32 opacity-20 rounded-full blur-2xl transition-colors duration-500" style={{ backgroundColor: veeHealth === 'tired' ? '#8CAAB8' : veeHealth === 'stressed' ? '#FF9F66' : veeHealth === 'waiting' ? '#647C73' : '#8CE0A7' }}></div>
+        
+        <div className="relative z-10">
+          <h3 className="text-sm font-bold text-[#647C73] dark:text-stone-400 mb-2">Kondisi Vee</h3>
+          <div className="flex items-baseline gap-1 mb-2">
+            <p className="text-4xl font-black text-[#244135] dark:text-stone-50 leading-none">
+              {isSyncing ? <span className="animate-pulse">...</span> : displayScore}
+            </p>
+            <span className="text-sm font-bold text-[#647C73] dark:text-stone-500">/100</span>
+          </div>
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold ${currentStatus.color} transition-colors duration-300`}>
+            {veeHealth === 'waiting' ? <CloudOff size={12} strokeWidth={3} /> : <Activity size={12} strokeWidth={3} />} 
+            {currentStatus.text}
+          </div>
+        </div>
+
+        <div className="w-24 h-24 shrink-0 flex items-center justify-center relative z-10 cursor-pointer" onClick={handleVeeClick}>
+          <div className={`transition-transform duration-200 ${isVeeBooped ? 'scale-x-[1.2] scale-y-[0.8] translate-y-1' : 'scale-100 group-hover:scale-110'}`}>
+            <VeeMascot veeHealth={veeHealth} scale={0.9} weight={veeWeight} eyeLookX={eyePosition.x} eyeLookY={eyePosition.y} />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-[#EEF2F5] dark:bg-[#1A1D20] rounded-[24px] p-4 flex gap-4 items-center">
+        <div className="bg-white/60 dark:bg-white/10 p-2.5 rounded-[14px] text-[#647C73] dark:text-[#8CAAB8] shrink-0">
+          {veeHealth === 'waiting' ? <CloudOff size={20} strokeWidth={2.5} /> : <Info size={20} strokeWidth={2.5} />}
+        </div>
+        <div className="flex-1">
+          <p className="text-[#244135] dark:text-stone-200 text-sm font-bold mb-0.5">{veeHealth === 'waiting' ? 'Status Offline' : 'Saran Vee'}</p>
+          <p className="text-[#647C73] dark:text-stone-400 text-xs font-medium leading-relaxed">{currentStatus.advice}</p>
+        </div>
+      </div>
+    </div>
+  );
+}

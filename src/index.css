@@ -1,0 +1,39 @@
+/* src/index.css */
+
+/* 1. Import utama Tailwind v4 */
+@import "tailwindcss";
+
+/* 2. PAKSA TAILWIND PAKE CLASS .dark (Biar tombol toggle kita berfungsi!) */
+@custom-variant dark (&:is(.dark *));
+
+/* 3. Base layer untuk memastikan aplikasi full screen & anti-scroll mentok */
+@layer base {
+  html, body {
+    @apply w-full h-full m-0 p-0 overflow-hidden overscroll-none;
+    -webkit-tap-highlight-color: transparent; 
+  }
+
+  /* Kustomisasi scrollbar biar elegan kayak macOS */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-[#D1D9D5] dark:bg-stone-700 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-[#A0B0A8] dark:bg-stone-600;
+  }
+
+  /* Utility class untuk hide scrollbar tapi tetap bisa di-scroll (Dipakai di PWA) */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
