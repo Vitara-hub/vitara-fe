@@ -20,7 +20,7 @@ const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 export type ViewType = 'landing' | 'login' | 'dashboard' | 'logbook' | 'activity' | 'chat' | 'profile';
 
 export default function App() {
-  const { isAuthenticated, isDarkMode, toggleDarkMode, veeHealth, login } = useStore();
+  const { isAuthenticated, isDarkMode, toggleDarkMode, veeHealth } = useStore();
   const [currentView, setCurrentView] = useState<ViewType>('landing');
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const isKeyboardVisible = useKeyboardVisible();
@@ -42,7 +42,6 @@ export default function App() {
   }, [isDarkMode]);
 
   const handleLoginSuccess = () => {
-    login('Yunggi'); 
     setCurrentView('dashboard');
   };
 

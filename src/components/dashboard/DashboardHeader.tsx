@@ -2,9 +2,10 @@
 import { useState, useEffect } from 'react';
 import { Sun, Moon } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
+import type { AuthUser } from '@/store/useStore';
 
 interface DashboardHeaderProps {
-  user: { name: string } | null;
+  user: AuthUser | null;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
   isLoading?: boolean;
@@ -46,15 +47,15 @@ export default function DashboardHeader({
           <>
             <div className="w-12 h-12 rounded-[20px] bg-white dark:bg-stone-800 overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.03)] shrink-0 group hover:scale-105 transition-transform cursor-pointer">
               <img
-                src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user?.name || 'Sarah'}`}
-                alt="Profile"
+                src={user?.photoURL || `https://api.dicebear.com/7.x/notionists/svg?seed=${user?.name || 'Sarah'}`}
+                alt={user?.displayName || 'Profile'}
                 className="group-hover:rotate-6 transition-transform"
               />
             </div>
             <div className="min-w-0">
               <p className="text-[#647C73] dark:text-stone-400 text-xs font-medium mb-0.5">{currentDate}</p>
               <h2 className="text-lg font-extrabold text-[#244135] dark:text-stone-50 leading-none truncate">
-                {greeting}, {user?.name || 'Sarah'}
+                {greeting}, {user?.displayName || user?.name || 'Sarah'}
               </h2>
             </div>
           </>

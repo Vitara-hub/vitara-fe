@@ -28,12 +28,20 @@ export interface LatestMetrics {
   typing: { stress_score: number } | null;
 }
 
+export interface AuthUser {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL: string;
+  name: string;
+}
+
 export type VeeHealthStatus = 'fresh' | 'tired' | 'sick' | 'stressed' | 'waiting';
 
 interface StoreState {
   isAuthenticated: boolean;
-  user: { name: string } | null;
-  login: (username: string) => void;
+  user: AuthUser | null;
+  login: (user: AuthUser) => void;
   logout: () => void;
 
   isDarkMode: boolean;
@@ -60,7 +68,7 @@ const useStore = create<StoreState>()(
     (set) => ({
       isAuthenticated: false,
       user: null,
-      login: (username) => set({ isAuthenticated: true, user: { name: username } }),
+      login: (user) => set({ isAuthenticated: true, user }),
       logout: () => set({ isAuthenticated: false, user: null }),
       
       isDarkMode: false, 
