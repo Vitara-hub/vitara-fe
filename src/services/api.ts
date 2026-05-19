@@ -9,6 +9,7 @@ import {
   ChatResponse, 
   HealthScoreRequest, 
   HealthScoreResponse, 
+  ActivityDataResponse,
   TypingRequest, 
   TypingResponse 
 } from '@/types/api';
@@ -64,6 +65,12 @@ export const vitaraApi = {
   },
   getHealthScore: async (data: HealthScoreRequest): Promise<HealthScoreResponse> => {
     const response = await apiClient.post('/health/score', data);
+    return response.data;
+  },
+  getActivityData: async (userId: string): Promise<ActivityDataResponse> => {
+    const response = await apiClient.get('/activity/summary', {
+      params: { user_id: userId },
+    });
     return response.data;
   }
 };

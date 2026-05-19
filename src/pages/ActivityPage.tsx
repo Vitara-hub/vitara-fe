@@ -1,20 +1,187 @@
 // src/pages/ActivityPage.tsx
-import { useEffect, useState } from 'react';
-import { CalendarDays } from 'lucide-react';
-import useStore from '@/store/useStore';
-import ActivityChart from '@/components/activity/ActivityChart'; 
+import { useEffect, useMemo, useState } from 'react';
+import { CalendarDays, CloudOff } from 'lucide-react';
+import useStore, { ActivityLog } from '@/store/useStore';
+import { vitaraApi } from '@/services/api';
+import ActivityChart from '@/components/activity/ActivityChart';
 import RecentHistory from '@/components/activity/RecentHistory';
 import Skeleton from '@/components/ui/Skeleton';
+import type { ActivityChartPoint, ActivityDataResponse, ActivityHistoryItem, ActivityType } from '@/types/api';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const emptyActivityData: ActivityDataResponse = {
+  average_score: 0,
+  weekly_change_percent: 0,
+  chart: buildEmptyChart(),
+  history: [],
+};
+
+function buildEmptyChart(): ActivityChartPoint[] {
+  const today = new Date();
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (6 - index));
+
+    return {
+      day: date.toLocaleDateString('id-ID', { weekday: 'short' }),
+      score: 0,
+      is_today: index === 6,
+    };
+  });
+}
+
+function toDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function clampScore(score: number) {
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function getLogScore(log: ActivityLog) {
+  if (log.type === 'journal') {
+    if (typeof log.stressLevel === 'number') {
+      return clampScore(100 - (log.stressLevel <= 1 ? log.stressLevel * 100 : log.stressLevel));
+    }
+    return 70;
+  }
+
+  if (log.type === 'sleep') return clampScore(log.qualityScore ?? 70);
+
+  if (log.type === 'food') {
+    if (typeof log.calories !== 'number') return 70;
+    return clampScore(100 - (Math.abs(log.calories - 2000) / 2000) * 100);
+  }
+
+  return 70;
+}
+
+function getHistoryTitle(log: ActivityLog) {
+  if (log.type === 'journal') return 'Jurnal Sentimen';
+  if (log.type === 'sleep') return 'Kualitas Tidur';
+  if (log.type === 'food') return 'Nutrition Lens';
+  return 'Percakapan Vee';
+}
+
+function getHistoryScore(log: ActivityLog) {
+  if (log.type === 'journal') return log.emotion ?? 'Tercatat';
+  if (log.type === 'sleep') return `${log.qualityScore ?? getLogScore(log)}/100`;
+  if (log.type === 'food') return typeof log.calories === 'number' ? `${log.calories} kcal` : 'Tercatat';
+  return log.syncStatus === 'pending' ? 'Pending' : 'Tersimpan';
+}
+
+function formatHistoryTime(timestamp: string) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return 'Waktu tidak tersedia';
+
+  return date.toLocaleString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function buildLocalActivityData(activityHistory: ActivityLog[]): ActivityDataResponse {
+  const now = new Date();
+  const currentWeekStart = new Date(now.getTime() - 6 * DAY_MS);
+  const previousWeekStart = new Date(now.getTime() - 13 * DAY_MS);
+  const currentWeekScores: number[] = [];
+  const previousWeekScores: number[] = [];
+
+  const chart = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now);
+    date.setDate(now.getDate() - (6 - index));
+    const key = toDateKey(date);
+
+    const scores = activityHistory
+      .filter((log) => toDateKey(new Date(log.timestamp)) === key)
+      .map(getLogScore);
+
+    currentWeekScores.push(...scores);
+
+    return {
+      day: date.toLocaleDateString('id-ID', { weekday: 'short' }),
+      score: scores.length ? clampScore(scores.reduce((sum, score) => sum + score, 0) / scores.length) : 0,
+      is_today: index === 6,
+    };
+  });
+
+  activityHistory.forEach((log) => {
+    const timestamp = new Date(log.timestamp);
+    if (Number.isNaN(timestamp.getTime())) return;
+
+    const score = getLogScore(log);
+    if (timestamp >= previousWeekStart && timestamp < currentWeekStart) previousWeekScores.push(score);
+  });
+
+  const averageScore = currentWeekScores.length
+    ? clampScore(currentWeekScores.reduce((sum, score) => sum + score, 0) / currentWeekScores.length)
+    : 0;
+  const previousAverage = previousWeekScores.length
+    ? previousWeekScores.reduce((sum, score) => sum + score, 0) / previousWeekScores.length
+    : averageScore;
+
+  const history: ActivityHistoryItem[] = activityHistory.slice(0, 6).map((log) => ({
+    id: log.id,
+    type: log.type as ActivityType,
+    title: getHistoryTitle(log),
+    time: formatHistoryTime(log.timestamp),
+    score: getHistoryScore(log),
+  }));
+
+  return {
+    average_score: averageScore,
+    weekly_change_percent: Math.round(averageScore - previousAverage),
+    chart,
+    history,
+  };
+}
 
 export default function ActivityPage() {
-  // Destructuring dengan TS yang sudah ketat dari Langkah 4 sebelumnya
-  const { veeHealth, veeWeight } = useStore();
+  const { veeHealth, veeWeight, user, activityHistory, setServerDown } = useStore();
+  const [activityData, setActivityData] = useState<ActivityDataResponse>(emptyActivityData);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const localActivityData = useMemo(() => buildLocalActivityData(activityHistory), [activityHistory]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setIsLoading(false), 700);
-    return () => window.clearTimeout(timer);
-  }, []);
+    let isMounted = true;
+
+    const fetchActivityData = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const data = await vitaraApi.getActivityData(user?.name || 'Yunggi');
+        if (!isMounted) return;
+
+        setActivityData({
+          ...data,
+          chart: data.chart.length ? data.chart : buildEmptyChart(),
+        });
+        setServerDown(false);
+      } catch (error) {
+        console.warn('Activity API Offline. Using local activity history.', error);
+        if (!isMounted) return;
+
+        setActivityData(localActivityData);
+        setErrorMessage('Data aktivitas server belum tersedia. Menampilkan riwayat lokal dari perangkat ini.');
+        setServerDown(true);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    fetchActivityData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activityHistory, localActivityData, setServerDown, user]);
   
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-6 space-y-6 bg-[#FAF9F6] dark:bg-[#121413]">
@@ -25,8 +192,22 @@ export default function ActivityPage() {
         </div>
       </div>
 
-      <ActivityChart veeHealth={veeHealth} veeWeight={veeWeight} isLoading={isLoading} />
-      <RecentHistory isLoading={isLoading} />
+      {!isLoading && errorMessage && (
+        <div className="bg-[#EEF2F5] dark:bg-[#1A1D20] rounded-[20px] p-4 flex gap-3 items-start border border-[#E8F0EA] dark:border-stone-800">
+          <CloudOff size={18} className="text-[#4A7A8C] dark:text-[#8CAAB8] shrink-0 mt-0.5" />
+          <p className="text-xs font-semibold leading-relaxed text-[#647C73] dark:text-stone-400">{errorMessage}</p>
+        </div>
+      )}
+
+      <ActivityChart
+        veeHealth={veeHealth}
+        veeWeight={veeWeight}
+        averageScore={activityData.average_score}
+        weeklyChangePercent={activityData.weekly_change_percent}
+        chartData={activityData.chart}
+        isLoading={isLoading}
+      />
+      <RecentHistory items={activityData.history} isLoading={isLoading} />
       
       <div className="h-32 shrink-0 w-full"></div>
     </div>

@@ -65,7 +65,31 @@ export interface HealthScoreResponse {
   };
 }
 
-// 6. Companion Chat Endpoint
+// 6. Activity Summary Endpoint
+export type ActivityType = 'journal' | 'sleep' | 'food' | 'chat' | 'stress';
+
+export interface ActivityChartPoint {
+  day: string;
+  score: number;
+  is_today?: boolean;
+}
+
+export interface ActivityHistoryItem {
+  id: string | number;
+  type: ActivityType;
+  title: string;
+  time: string;
+  score: string | number;
+}
+
+export interface ActivityDataResponse {
+  average_score: number;
+  weekly_change_percent: number;
+  chart: ActivityChartPoint[];
+  history: ActivityHistoryItem[];
+}
+
+// 7. Companion Chat Endpoint
 export interface ChatRequest {
   user_id: string;
   message: string;
