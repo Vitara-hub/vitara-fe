@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Moon, Brain, Utensils, LucideIcon } from 'lucide-react';
 import useStore, { VeeHealthStatus } from '@/store/useStore';
+import Skeleton from '@/components/ui/Skeleton';
 
 // Mengimpor sub-komponen
 import JournalTab from '@/components/logbook/JournalTab';
@@ -34,11 +35,34 @@ function TabButton({ active, onClick, label, icon: Icon }: TabButtonProps) {
   );
 }
 
+function LogbookContentSkeleton() {
+  return (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <div className="w-full h-44 bg-white dark:bg-[#1A1D1B] rounded-[28px] shadow-sm border border-[#E8F0EA] dark:border-stone-800 flex flex-col items-center justify-center">
+        <Skeleton className="w-20 h-20 rounded-full mb-4" />
+        <Skeleton className="h-4 w-40" />
+      </div>
+
+      <div className="bg-white dark:bg-[#1A1D1B] rounded-[28px] p-6 shadow-sm border border-[#E8F0EA] dark:border-stone-800 space-y-4">
+        <Skeleton className="h-5 w-36" />
+        <Skeleton className="h-24 w-full rounded-[20px]" />
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="h-14 rounded-[18px]" />
+          <Skeleton className="h-14 rounded-[18px]" />
+        </div>
+      </div>
+
+      <Skeleton className="h-14 w-full rounded-[22px]" />
+    </div>
+  );
+}
+
 export default function LogbookPage() {
   const { veeHealth, veeWeight, setVeeState } = useStore();
   const [activeTab, setActiveTab] = useState<TabType>('mood'); 
   const [jumpDirection, setJumpDirection] = useState<JumpDirection>(null);
   const [eyePosition, setEyePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   
   const prevTabIndex = useRef<number>(0);
   
@@ -76,12 +100,21 @@ export default function LogbookPage() {
     return () => window.removeEventListener('mousemove', handleEyeMove);
   }, []);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setIsLoading(false), 700);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-300 bg-[#F4F6F5] dark:bg-[#121413]">
       
       {/* HEADER (Sticky) */}
       <div className="px-6 pt-10 pb-4 shrink-0 sticky top-0 z-20 bg-[#F4F6F5]/90 dark:bg-[#121413]/90 backdrop-blur-xl">
-        <h2 className="text-3xl font-black text-[#244135] dark:text-stone-50 mb-6 tracking-tight">Pencatatan</h2>
+        {isLoading ? (
+          <Skeleton className="h-9 w-36 mb-6" />
+        ) : (
+          <h2 className="text-3xl font-black text-[#244135] dark:text-stone-50 mb-6 tracking-tight">Pencatatan</h2>
+        )}
         
         <div className="relative flex bg-[#E8ECEA] dark:bg-stone-800/60 p-1.5 rounded-[20px] shadow-inner border border-white/50 dark:border-stone-700/50">
           <div
@@ -96,9 +129,15 @@ export default function LogbookPage() {
 
       {/* RENDER KONTEN TAB */}
       <div className="flex-1 px-6 pb-6 overflow-y-auto no-scrollbar">
-        {activeTab === 'mood' && <JournalTab jumpDirection={jumpDirection} veeHealth={veeHealth} setVeeHealth={setVeeHealth} weight={veeWeight} eyeLookX={eyePosition.x} eyeLookY={eyePosition.y} />}
-        {activeTab === 'nutrition' && <NutritionTab jumpDirection={jumpDirection} veeHealth={veeHealth} setVeeHealth={setVeeHealth} weight={veeWeight} setWeight={setVeeWeight} eyeLookX={eyePosition.x} eyeLookY={eyePosition.y} />}
-        {activeTab === 'sleep' && <SleepTab jumpDirection={jumpDirection} veeHealth={veeHealth} setVeeHealth={setVeeHealth} weight={veeWeight} eyeLookX={eyePosition.x} eyeLookY={eyePosition.y} />}
+        {isLoading ? (
+          <LogbookContentSkeleton />
+        ) : (
+          <>
+            {activeTab === 'mood' && <JournalTab jumpDirection={jumpDirection} veeHealth={veeHealth} setVeeHealth={setVeeHealth} weight={veeWeight} eyeLookX={eyePosition.x} eyeLookY={eyePosition.y} />}
+            {activeTab === 'nutrition' && <NutritionTab jumpDirection={jumpDirection} veeHealth={veeHealth} setVeeHealth={setVeeHealth} weight={veeWeight} setWeight={setVeeWeight} eyeLookX={eyePosition.x} eyeLookY={eyePosition.y} />}
+            {activeTab === 'sleep' && <SleepTab jumpDirection={jumpDirection} veeHealth={veeHealth} setVeeHealth={setVeeHealth} weight={veeWeight} eyeLookX={eyePosition.x} eyeLookY={eyePosition.y} />}
+          </>
+        )}
         <div className="h-32 shrink-0 w-full"></div>
       </div>
       

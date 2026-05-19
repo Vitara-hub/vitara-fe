@@ -16,6 +16,12 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
   const { veeHealth, veeWeight, user, latestMetrics, setVeeState } = useStore();
   const [healthScoreData, setHealthScoreData] = useState<HealthScoreResponse | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(true);
+  const [isMockLoading, setIsMockLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setIsMockLoading(false), 700);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const fetchHealthScore = async () => {
@@ -44,20 +50,22 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
     };
 
     fetchHealthScore();
-  }, [user, latestMetrics, veeWeight, setVeeState]); 
+  }, [user, latestMetrics, veeWeight, setVeeState]);
+
+  const isLoading = isMockLoading || isSyncing;
 
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-6 space-y-6">
-      <DashboardHeader user={user} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
+      <DashboardHeader user={user} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} isLoading={isLoading} />
       
       <VeeStatusWidget 
         veeHealth={veeHealth} 
         veeWeight={veeWeight} 
         realScore={healthScoreData?.health_score} 
-        isSyncing={isSyncing}
+        isSyncing={isLoading}
       />
 
-      <PillarsGrid breakdown={healthScoreData?.breakdown} isSyncing={isSyncing} />
+      <PillarsGrid breakdown={healthScoreData?.breakdown} isSyncing={isLoading} />
 
       <div className="h-32 shrink-0 w-full"></div>
     </div>

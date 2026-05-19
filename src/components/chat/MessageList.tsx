@@ -1,5 +1,6 @@
 // src/components/chat/MessageList.tsx
 import { RefObject } from 'react';
+import Skeleton from '@/components/ui/Skeleton';
 
 // Ekspor tipe agar bisa digunakan di ChatPage
 export interface ChatMessage {
@@ -43,11 +44,11 @@ export default function MessageList({ messages, isLoading, bottomRef }: MessageL
       
       {/* Indikator Loading */}
       {isLoading && (
-        <div className="flex justify-start">
-          <div className="bg-white dark:bg-[#1A1D1B] rounded-[24px] rounded-bl-sm p-3 shadow-sm border border-[#E8F0EA] flex gap-1.5 items-center">
-            <div className="w-2 h-2 rounded-full bg-[#8CE0A7] animate-bounce" style={{ animationDelay: '0ms' }} />
-            <div className="w-2 h-2 rounded-full bg-[#8CE0A7] animate-bounce" style={{ animationDelay: '150ms' }} />
-            <div className="w-2 h-2 rounded-full bg-[#8CE0A7] animate-bounce" style={{ animationDelay: '300ms' }} />
+        <div className="flex justify-start items-end gap-2">
+          <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+          <div className="bg-white dark:bg-[#1A1D1B] rounded-[28px] rounded-bl-sm p-3.5 shadow-sm border border-[#E8F0EA] dark:border-stone-800 w-[70%] max-w-[300px] space-y-2">
+            <Skeleton className="h-3 w-11/12" />
+            <Skeleton className="h-3 w-2/3" />
           </div>
         </div>
       )}
