@@ -31,8 +31,8 @@ export default function MessageList({ messages, isLoading, bottomRef }: MessageL
           {/* Render Rekomendasi jika ada dari backend */}
           {msg.role === 'ai' && msg.recommendations && msg.recommendations.length > 0 && (
             <div className="mt-2 ml-2 flex flex-col gap-1.5 max-w-[80%]">
-              {msg.recommendations.map((rec, idx) => (
-                <div key={idx} className="text-[11px] font-bold text-[#4A7A8C] dark:text-[#8CAAB8] bg-[#EEF2F5] dark:bg-[#1A1D20] px-3 py-1.5 rounded-[12px] border border-[#D5E5DB] dark:border-stone-700/50">
+              {msg.recommendations.map((rec) => (
+                <div key={`${msg.id}-${rec}`} className="text-[11px] font-bold text-[#4A7A8C] dark:text-[#8CAAB8] bg-[#EEF2F5] dark:bg-[#1A1D20] px-3 py-1.5 rounded-[12px] border border-[#D5E5DB] dark:border-stone-700/50">
                   ✨ {rec}
                 </div>
               ))}
