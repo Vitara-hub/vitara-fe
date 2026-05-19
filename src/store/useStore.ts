@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@supabase/supabase-js';
-import { supabase } from '@/services/supabase';
+import { isSupabaseConfigured, supabase } from '@/services/supabase';
 
 export interface BaseActivityLog { 
   id: number; 
@@ -52,6 +52,25 @@ function mapSupabaseUser(user: User): AuthUser {
   };
 }
 
+function hasSupabaseAuthCallback() {
+  const searchParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
+  return (
+    searchParams.has('code') ||
+    searchParams.has('error') ||
+    hashParams.has('access_token') ||
+    hashParams.has('refresh_token') ||
+    hashParams.has('error')
+  );
+}
+
+function removeSupabaseAuthParamsFromUrl() {
+  if (!hasSupabaseAuthCallback()) return;
+
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
+
 export type VeeHealthStatus = 'fresh' | 'tired' | 'sick' | 'stressed' | 'waiting';
 
 interface StoreState {
@@ -90,34 +109,89 @@ const useStore = create<StoreState>()(
       user: null,
       login: (user) => set({ isAuthenticated: true, isAuthLoading: false, user }),
       logout: async () => {
-        await supabase.auth.signOut();
+        if (isSupabaseConfigured) await supabase.auth.signOut();
         set({ isAuthenticated: false, isAuthLoading: false, user: null });
       },
       setAuthUser: (user) => set({ isAuthenticated: Boolean(user), isAuthLoading: false, user }),
       initAuth: async () => {
         set({ isAuthLoading: true });
 
+        if (!isSupabaseConfigured) {
+          set({ isAuthenticated: false, isAuthLoading: false, user: null });
+          return () => {};
+        }
+
+        const isOAuthCallback = hasSupabaseAuthCallback();
+
+        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log('Auth State:', event, session);
+
+          if (session?.user) {
+            set({
+              isAuthenticated: true,
+              isAuthLoading: false,
+              user: mapSupabaseUser(session.user),
+            });
+            removeSupabaseAuthParamsFromUrl();
+            return;
+          }
+
+          if (!isOAuthCallback || event === 'SIGNED_OUT') {
+            set({
+              isAuthenticated: false,
+              isAuthLoading: false,
+              user: null,
+            });
+          }
+        });
+
         try {
+          const code = new URLSearchParams(window.location.search).get('code');
+
+          if (code) {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) throw error;
+
+            set({
+              isAuthenticated: Boolean(data.session?.user),
+              isAuthLoading: false,
+              user: data.session?.user ? mapSupabaseUser(data.session.user) : null,
+            });
+            removeSupabaseAuthParamsFromUrl();
+            return () => listener.subscription.unsubscribe();
+          }
+
           const { data, error } = await supabase.auth.getSession();
           if (error) throw error;
 
-          set({
-            isAuthenticated: Boolean(data.session?.user),
-            isAuthLoading: false,
-            user: data.session?.user ? mapSupabaseUser(data.session.user) : null,
-          });
+          if (data.session?.user) {
+            set({
+              isAuthenticated: true,
+              isAuthLoading: false,
+              user: mapSupabaseUser(data.session.user),
+            });
+            removeSupabaseAuthParamsFromUrl();
+          } else if (!isOAuthCallback) {
+            set({
+              isAuthenticated: false,
+              isAuthLoading: false,
+              user: null,
+            });
+          } else {
+            window.setTimeout(async () => {
+              const { data: retryData } = await supabase.auth.getSession();
+              set({
+                isAuthenticated: Boolean(retryData.session?.user),
+                isAuthLoading: false,
+                user: retryData.session?.user ? mapSupabaseUser(retryData.session.user) : null,
+              });
+              if (retryData.session?.user) removeSupabaseAuthParamsFromUrl();
+            }, 1200);
+          }
         } catch (error) {
           console.error('Supabase auth session check failed:', error);
           set({ isAuthenticated: false, isAuthLoading: false, user: null });
         }
-
-        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-          set({
-            isAuthenticated: Boolean(session?.user),
-            isAuthLoading: false,
-            user: session?.user ? mapSupabaseUser(session.user) : null,
-          });
-        });
 
         return () => listener.subscription.unsubscribe();
       },

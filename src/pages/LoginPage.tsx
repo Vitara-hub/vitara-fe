@@ -4,7 +4,8 @@ import { ArrowRight, Lock, Mail, User } from 'lucide-react';
 import VitaraLogo from '@/components/ui/VitaraLogo';
 import PopupAlert, { PopupState } from '@/components/ui/PopupAlert';
 import Skeleton from '@/components/ui/Skeleton';
-import { supabase } from '@/services/supabase';
+import { isSupabaseConfigured, supabase } from '@/services/supabase';
+import useStore from '@/store/useStore';
 
 interface LoginPageProps {
   onLogin?: () => void;
@@ -45,6 +46,7 @@ function getFriendlyAuthError(message: string) {
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
+  const { user, isAuthLoading } = useStore();
   const [isLoginView, setIsLoginView] = useState<boolean>(true);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string>('');
@@ -69,6 +71,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   useEffect(() => {
+    if (!isAuthLoading && user) onLogin?.();
+  }, [isAuthLoading, onLogin, user]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search || window.location.hash.replace('#', '?'));
     const errorDescription = params.get('error_description') || params.get('error');
 
@@ -80,6 +86,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   const handleEmailAuth = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!isSupabaseConfigured) {
+      showPopup('error', 'Konfigurasi belum lengkap', 'VITE_SUPABASE_URL harus berupa URL project Supabase dan VITE_SUPABASE_ANON_KEY harus berisi anon public key.');
+      return;
+    }
 
     if (!email.trim() || !password) {
       showPopup('error', 'Data belum lengkap', 'Isi email dan password terlebih dahulu.');
@@ -105,7 +116,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             data: {
               full_name: fullName.trim() || email.trim(),
             },
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         });
 
@@ -130,8 +141,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   const handleGoogleLogin = async () => {
-    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      showPopup('error', 'Konfigurasi belum lengkap', 'VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY belum dikonfigurasi di file .env.');
+    if (!isSupabaseConfigured) {
+      showPopup('error', 'Konfigurasi belum lengkap', 'VITE_SUPABASE_URL harus berupa URL project Supabase dan VITE_SUPABASE_ANON_KEY harus berisi anon public key.');
       return;
     }
 
@@ -140,7 +151,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}/dashboard`,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
