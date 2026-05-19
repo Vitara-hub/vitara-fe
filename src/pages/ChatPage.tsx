@@ -11,31 +11,97 @@ interface ChatPageProps {
   veeHealth: VeeHealthStatus;
 }
 
-export default function ChatPage({ veeHealth }: ChatPageProps) {
-  // Ambil setVeeState agar bisa mengubah wujud Vee secara global
-  const { user, addLog, setVeeState, veeWeight } = useStore();
+const CHAT_CACHE_TTL = 5 * 60 * 1000;
 
-  const [messages, setMessages] = useState<ChatMessage[]>([{ 
-    id: 1, 
-    role: 'ai', 
-    text: veeHealth === 'tired' ? 'Halo... aku agak lemes nih karena kita kurang tidur. Kamu ngerasa capek juga nggak?' : 'Halo! Aku Vee. Ada yang mau diceritain hari ini?' 
-  }]);
+function isFresh(fetchedAt: number | null, ttl = CHAT_CACHE_TTL) {
+  return Boolean(fetchedAt && Date.now() - fetchedAt < ttl);
+}
+
+function getGreetingMessage(veeHealth: VeeHealthStatus): ChatMessage {
+  return {
+    id: 1,
+    role: 'ai',
+    text: veeHealth === 'tired'
+      ? 'Halo... aku agak lemes nih karena kita kurang tidur. Kamu ngerasa capek juga nggak?'
+      : 'Halo! Aku Vee. Ada yang mau diceritain hari ini?',
+  };
+}
+
+export default function ChatPage({ veeHealth }: ChatPageProps) {
+  const {
+    user,
+    addLog,
+    setVeeState,
+    veeWeight,
+    chatMessages,
+    setChatMessages,
+  } = useStore();
+
+  const hasFreshCache = isFresh(chatMessages.fetchedAt);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => chatMessages.data || [getGreetingMessage(veeHealth)]);
   const [inputMessage, setInputMessage] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSending, setIsSending] = useState<boolean>(false);
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(() => !hasFreshCache);
   
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (hasFreshCache && chatMessages.data) {
+      setMessages(chatMessages.data);
+      setIsInitialLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchChatHistory = async () => {
+      setIsInitialLoading(true);
+
+      try {
+        const response = await vitaraApi.getChatHistory(user?.name || 'anonymous_user');
+        if (!isMounted) return;
+
+        const nextMessages = response.messages.length ? response.messages : [getGreetingMessage(veeHealth)];
+        setMessages(nextMessages);
+        setChatMessages(nextMessages);
+      } catch (error) {
+        console.warn('Chat history unavailable. Using local greeting.', error);
+        if (!isMounted) return;
+
+        const fallbackMessages = chatMessages.data || [getGreetingMessage(veeHealth)];
+        setMessages(fallbackMessages);
+        setChatMessages(fallbackMessages);
+      } finally {
+        if (isMounted) setIsInitialLoading(false);
+      }
+    };
+
+    fetchChatHistory();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [chatMessages.data, chatMessages.fetchedAt, hasFreshCache, setChatMessages, user, veeHealth]);
+
   useEffect(() => { 
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); 
-  }, [messages, isLoading]);
+  }, [messages, isInitialLoading, isSending]);
+
+  const updateMessages = (updater: (previous: ChatMessage[]) => ChatMessage[]) => {
+    setMessages((previous) => {
+      const nextMessages = updater(previous);
+      setChatMessages(nextMessages);
+      return nextMessages;
+    });
+  };
 
   const handleSend = async () => {
     const textToSubmit = inputMessage.trim();
-    if (!textToSubmit || isLoading) return;
+    if (!textToSubmit || isSending || isInitialLoading) return;
     
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: textToSubmit }]);
+    updateMessages((prev) => [...prev, { id: Date.now(), role: 'user', text: textToSubmit }]);
     setInputMessage(''); 
-    setIsLoading(true);
+    setIsSending(true);
 
     try {
       const response = await vitaraApi.sendChatMessage({
@@ -43,7 +109,7 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
         message: textToSubmit
       });
 
-      setMessages(prev => [...prev, { 
+      updateMessages((prev) => [...prev, { 
         id: Date.now() + 1, 
         role: 'ai', 
         text: response.response,
@@ -53,17 +119,15 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
       addLog({ type: 'chat', summary: `Ngobrol dengan Vee: "${textToSubmit.substring(0, 30)}..."`, syncStatus: 'synced' });
 
     } catch (error) {
-      // 🚀 OFFLINE FIRST: Transparan tanpa error popup.
-      console.warn("Chat API Offline:", error);
+      console.warn('Chat API Offline:', error);
       
-      // Ubah state maskot global jadi waiting (Abu-abu, loading)
       setVeeState('waiting', veeWeight);
       
       setTimeout(() => {
-        setMessages(prev => [...prev, { 
+        updateMessages((prev) => [...prev, { 
           id: Date.now() + 1, 
           role: 'ai', 
-          text: 'Sinyalku ke otak AI pusat lagi terputus nih... Pesanmu udah aku simpan, nanti kita bahas lagi kalau sinyalnya udah balik ya! 🥺',
+          text: 'Sinyalku ke otak AI pusat lagi terputus nih... Pesanmu udah aku simpan, nanti kita bahas lagi kalau sinyalnya udah balik ya!',
           recommendations: ['Tunggu koneksi stabil']
         }]);
       }, 1000);
@@ -75,15 +139,15 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
       });
 
     } finally { 
-      setIsLoading(false); 
+      setIsSending(false); 
     }
   };
 
   return (
     <div className="flex-1 flex flex-col w-full relative bg-[#FAF9F6] dark:bg-[#121413] pb-28 md:pb-6 overflow-hidden">
-      <ChatHeader veeHealth={veeHealth} isLoading={isLoading} />
-      <MessageList messages={messages} isLoading={isLoading} bottomRef={bottomRef} />
-      <ChatInput inputMessage={inputMessage} setInputMessage={setInputMessage} handleSend={handleSend} isLoading={isLoading} />
+      <ChatHeader veeHealth={veeHealth} isLoading={isSending || isInitialLoading} />
+      <MessageList messages={messages} isLoading={isSending} isInitialLoading={isInitialLoading} bottomRef={bottomRef} />
+      <ChatInput inputMessage={inputMessage} setInputMessage={setInputMessage} handleSend={handleSend} isLoading={isSending || isInitialLoading} />
     </div>
   );
 }

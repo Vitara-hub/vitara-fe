@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
+import type { ActivityDataResponse, ChatHistoryMessage, HealthScoreResponse } from '@/types/api';
 
 export interface BaseActivityLog { 
   id: number; 
@@ -28,6 +29,11 @@ export interface LatestMetrics {
   food: { estimated_calories: number } | null;
   sleep: { quality_score: number } | null;
   typing: { stress_score: number } | null;
+}
+
+export interface CacheEntry<T> {
+  data: T | null;
+  fetchedAt: number | null;
 }
 
 export interface AuthUser {
@@ -65,6 +71,19 @@ function hasSupabaseAuthCallback() {
   );
 }
 
+function getSupabaseHashSession() {
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const accessToken = hashParams.get('access_token');
+  const refreshToken = hashParams.get('refresh_token');
+
+  if (!accessToken || !refreshToken) return null;
+
+  return {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  };
+}
+
 function removeSupabaseAuthParamsFromUrl() {
   if (!hasSupabaseAuthCallback()) return;
 
@@ -95,6 +114,13 @@ interface StoreState {
 
   latestMetrics: LatestMetrics;
   updateMetric: <K extends keyof LatestMetrics>(key: K, data: LatestMetrics[K]) => void;
+  dashboardHealthScore: CacheEntry<HealthScoreResponse>;
+  activityData: CacheEntry<ActivityDataResponse>;
+  chatMessages: CacheEntry<ChatHistoryMessage[]>;
+  setDashboardHealthScore: (data: HealthScoreResponse | null) => void;
+  setActivityData: (data: ActivityDataResponse | null) => void;
+  setChatMessages: (data: ChatHistoryMessage[] | null) => void;
+  clearCachedPageData: () => void;
 
   // 🚀 STATE BARU BUAT SERVER DOWN
   isServerDown: boolean;
@@ -147,9 +173,23 @@ const useStore = create<StoreState>()(
 
         try {
           const code = new URLSearchParams(window.location.search).get('code');
+          const hashSession = getSupabaseHashSession();
 
           if (code) {
             const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) throw error;
+
+            set({
+              isAuthenticated: Boolean(data.session?.user),
+              isAuthLoading: false,
+              user: data.session?.user ? mapSupabaseUser(data.session.user) : null,
+            });
+            removeSupabaseAuthParamsFromUrl();
+            return () => listener.subscription.unsubscribe();
+          }
+
+          if (hashSession) {
+            const { data, error } = await supabase.auth.setSession(hashSession);
             if (error) throw error;
 
             set({
@@ -222,6 +262,23 @@ const useStore = create<StoreState>()(
       updateMetric: (key, data) => set((state) => ({
         latestMetrics: { ...state.latestMetrics, [key]: data }
       })),
+      dashboardHealthScore: { data: null, fetchedAt: null },
+      activityData: { data: null, fetchedAt: null },
+      chatMessages: { data: null, fetchedAt: null },
+      setDashboardHealthScore: (data) => set({
+        dashboardHealthScore: { data, fetchedAt: data ? Date.now() : null },
+      }),
+      setActivityData: (data) => set({
+        activityData: { data, fetchedAt: data ? Date.now() : null },
+      }),
+      setChatMessages: (data) => set({
+        chatMessages: { data, fetchedAt: data ? Date.now() : null },
+      }),
+      clearCachedPageData: () => set({
+        dashboardHealthScore: { data: null, fetchedAt: null },
+        activityData: { data: null, fetchedAt: null },
+        chatMessages: { data: null, fetchedAt: null },
+      }),
 
       // 🚀 INISIALISASI STATE
       isServerDown: false,
@@ -237,6 +294,9 @@ const useStore = create<StoreState>()(
         veeWeight: state.veeWeight,
         activityHistory: state.activityHistory,
         latestMetrics: state.latestMetrics,
+        dashboardHealthScore: state.dashboardHealthScore,
+        activityData: state.activityData,
+        chatMessages: state.chatMessages,
         isServerDown: state.isServerDown,
       }),
     }

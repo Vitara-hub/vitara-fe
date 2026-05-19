@@ -9,6 +9,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import type { ActivityChartPoint, ActivityDataResponse, ActivityHistoryItem, ActivityType } from '@/types/api';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const ACTIVITY_CACHE_TTL = 5 * 60 * 1000;
 
 const emptyActivityData: ActivityDataResponse = {
   average_score: 0,
@@ -16,6 +17,10 @@ const emptyActivityData: ActivityDataResponse = {
   chart: buildEmptyChart(),
   history: [],
 };
+
+function isFresh(fetchedAt: number | null, ttl = ACTIVITY_CACHE_TTL) {
+  return Boolean(fetchedAt && Date.now() - fetchedAt < ttl);
+}
 
 function buildEmptyChart(): ActivityChartPoint[] {
   const today = new Date();
@@ -141,14 +146,28 @@ function buildLocalActivityData(activityHistory: ActivityLog[]): ActivityDataRes
 }
 
 export default function ActivityPage() {
-  const { veeHealth, veeWeight, user, activityHistory, setServerDown } = useStore();
-  const [activityData, setActivityData] = useState<ActivityDataResponse>(emptyActivityData);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const {
+    veeHealth,
+    veeWeight,
+    user,
+    activityHistory,
+    setServerDown,
+    activityData: cachedActivityData,
+    setActivityData,
+  } = useStore();
+  const hasFreshCache = isFresh(cachedActivityData.fetchedAt);
+  const activityData = cachedActivityData.data || emptyActivityData;
+  const [isLoading, setIsLoading] = useState<boolean>(() => !hasFreshCache);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const localActivityData = useMemo(() => buildLocalActivityData(activityHistory), [activityHistory]);
 
   useEffect(() => {
+    if (hasFreshCache) {
+      setIsLoading(false);
+      return;
+    }
+
     let isMounted = true;
 
     const fetchActivityData = async () => {
@@ -181,7 +200,14 @@ export default function ActivityPage() {
     return () => {
       isMounted = false;
     };
-  }, [activityHistory, localActivityData, setServerDown, user]);
+  }, [
+    cachedActivityData.fetchedAt,
+    hasFreshCache,
+    localActivityData,
+    setActivityData,
+    setServerDown,
+    user,
+  ]);
   
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-6 space-y-6 bg-[#FAF9F6] dark:bg-[#121413]">

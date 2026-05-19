@@ -6,6 +6,7 @@ import {
   SleepRequest, 
   SleepResponse, 
   ChatRequest, 
+  ChatHistoryResponse,
   ChatResponse, 
   HealthScoreRequest, 
   HealthScoreResponse, 
@@ -61,6 +62,12 @@ export const vitaraApi = {
   },
   sendChatMessage: async (data: ChatRequest): Promise<ChatResponse> => {
     const response = await apiClient.post('/chat', data);
+    return response.data;
+  },
+  getChatHistory: async (userId: string): Promise<ChatHistoryResponse> => {
+    const response = await apiClient.get('/chat/history', {
+      params: { user_id: userId },
+    });
     return response.data;
   },
   getHealthScore: async (data: HealthScoreRequest): Promise<HealthScoreResponse> => {

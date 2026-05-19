@@ -38,7 +38,7 @@ function getViewFromPath(pathname: string): ViewType | null {
 
 export default function App() {
   const { isAuthenticated, isAuthLoading, isDarkMode, toggleDarkMode, veeHealth, initAuth } = useStore();
-  const [currentView, setCurrentView] = useState<ViewType>('landing');
+  const [currentView, setCurrentView] = useState<ViewType>(() => getViewFromPath(window.location.pathname) || 'landing');
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const isKeyboardVisible = useKeyboardVisible();
   
@@ -170,13 +170,9 @@ export default function App() {
           <div className="flex-1 flex flex-col relative min-w-0 overflow-hidden">
             <main className="flex-1 flex flex-col w-full relative items-center min-h-0">
               <div className={`flex-1 flex flex-col w-full relative min-h-0 overflow-hidden ${currentView !== 'landing' && currentView !== 'login' ? 'max-w-4xl mx-auto' : ''}`}>
-                {isAuthLoading ? (
-                  <PageLoader />
-                ) : (
-                  <Suspense fallback={<PageLoader />}>
-                    {renderView()}
-                  </Suspense>
-                )}
+                <Suspense fallback={<PageLoader />}>
+                  {renderView()}
+                </Suspense>
               </div>
             </main>
 

@@ -1,5 +1,4 @@
 // src/pages/ProfilePage.tsx
-import { useEffect, useState } from 'react';
 import useStore from '@/store/useStore';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import { LogOut, Trash2, ChevronRight, Settings, Bell, Shield } from 'lucide-react';
@@ -7,12 +6,7 @@ import Skeleton from '@/components/ui/Skeleton';
 
 export default function ProfilePage() {
   const { user, veeHealth, logout, clearHistory } = useStore();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setIsLoading(false), 700);
-    return () => window.clearTimeout(timer);
-  }, []);
+  const isLoading = false;
 
   const handleLogout = () => {
     logout();

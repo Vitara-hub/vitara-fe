@@ -90,6 +90,17 @@ export interface ActivityDataResponse {
 }
 
 // 7. Companion Chat Endpoint
+export interface ChatHistoryMessage {
+  id: number;
+  role: 'user' | 'ai';
+  text: string;
+  recommendations?: string[];
+}
+
+export interface ChatHistoryResponse {
+  messages: ChatHistoryMessage[];
+}
+
 export interface ChatRequest {
   user_id: string;
   message: string;
