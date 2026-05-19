@@ -1,20 +1,13 @@
 // src/pages/LoginPage.tsx
-import { useState } from 'react';
-import { useGoogleLogin } from '@react-oauth/google';
-import { Loader2 } from 'lucide-react';
-import useStore, { AuthUser } from '@/store/useStore';
+import { FormEvent, useEffect, useState } from 'react';
+import { ArrowRight, Lock, Mail, User } from 'lucide-react';
 import VitaraLogo from '@/components/ui/VitaraLogo';
 import PopupAlert, { PopupState } from '@/components/ui/PopupAlert';
+import Skeleton from '@/components/ui/Skeleton';
+import { supabase } from '@/services/supabase';
 
 interface LoginPageProps {
   onLogin?: () => void;
-}
-
-interface GoogleUserInfo {
-  sub: string;
-  email: string;
-  name: string;
-  picture: string;
 }
 
 const GoogleIcon = () => (
@@ -33,71 +26,133 @@ const initialPopup: PopupState = {
   type: 'info',
 };
 
-export default function LoginPage({ onLogin }: LoginPageProps) {
-  const login = useStore((state) => state.login);
-  const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
-  const [popup, setPopup] = useState<PopupState>(initialPopup);
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+function getFriendlyAuthError(message: string) {
+  const lowerMessage = message.toLowerCase();
 
-  const showError = (message: string) => {
-    setPopup({
-      isOpen: true,
-      title: 'Login Google gagal',
-      message,
-      type: 'error',
-    });
+  if (lowerMessage.includes('invalid login credentials')) {
+    return 'Email atau password tidak sesuai. Periksa kembali lalu coba lagi.';
+  }
+
+  if (lowerMessage.includes('email not confirmed')) {
+    return 'Email belum dikonfirmasi. Cek inbox kamu untuk menyelesaikan verifikasi.';
+  }
+
+  if (lowerMessage.includes('user already registered')) {
+    return 'Email ini sudah terdaftar. Silakan masuk dengan password akun tersebut.';
+  }
+
+  return message || 'Autentikasi gagal. Silakan coba lagi.';
+}
+
+export default function LoginPage({ onLogin }: LoginPageProps) {
+  const [isLoginView, setIsLoginView] = useState<boolean>(true);
+  const [isAnimating, setIsAnimating] = useState<boolean>(false);
+  const [fullName, setFullName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [isEmailLoading, setIsEmailLoading] = useState<boolean>(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
+  const [popup, setPopup] = useState<PopupState>(initialPopup);
+
+  const isAuthenticating = isEmailLoading || isGoogleLoading;
+
+  const showPopup = (type: PopupState['type'], title: string, message: string) => {
+    setPopup({ isOpen: true, type, title, message });
   };
 
-  const handleGoogleLogin = useGoogleLogin({
-    flow: 'implicit',
-    scope: 'openid email profile',
-    onSuccess: async (tokenResponse) => {
-      setIsAuthenticating(true);
+  const toggleView = () => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      setIsLoginView((current) => !current);
+      setIsAnimating(false);
+    }, 300);
+  };
 
-      try {
-        const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: {
-            Authorization: `Bearer ${tokenResponse.access_token}`,
-          },
-        });
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search || window.location.hash.replace('#', '?'));
+    const errorDescription = params.get('error_description') || params.get('error');
 
-        if (!response.ok) {
-          throw new Error('Tidak dapat mengambil profil Google.');
-        }
+    if (errorDescription) {
+      showPopup('error', 'Login Google gagal', decodeURIComponent(errorDescription).replace(/\+/g, ' '));
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
-        const googleUser = (await response.json()) as GoogleUserInfo;
-        const authUser: AuthUser = {
-          uid: googleUser.sub,
-          email: googleUser.email,
-          displayName: googleUser.name,
-          photoURL: googleUser.picture,
-          name: googleUser.name,
-        };
+  const handleEmailAuth = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-        login(authUser);
-        onLogin?.();
-      } catch (error) {
-        console.error('Google profile fetch failed:', error);
-        showError('Koneksi ke Google bermasalah. Periksa koneksi internetmu, lalu coba lagi.');
-      } finally {
-        setIsAuthenticating(false);
-      }
-    },
-    onError: (errorResponse) => {
-      console.error('Google OAuth failed:', errorResponse);
-      setIsAuthenticating(false);
-      showError('Popup login ditutup atau Google menolak proses autentikasi. Silakan coba lagi.');
-    },
-  });
-
-  const handleLoginClick = () => {
-    if (!googleClientId) {
-      showError('VITE_GOOGLE_CLIENT_ID belum dikonfigurasi di file .env.');
+    if (!email.trim() || !password) {
+      showPopup('error', 'Data belum lengkap', 'Isi email dan password terlebih dahulu.');
       return;
     }
 
-    setIsAuthenticating(true);
-    handleGoogleLogin();
+    setIsEmailLoading(true);
+
+    try {
+      if (isLoginView) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (error) throw error;
+        if (data.session) onLogin?.();
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              full_name: fullName.trim() || email.trim(),
+            },
+            emailRedirectTo: window.location.origin,
+          },
+        });
+
+        if (error) throw error;
+
+        if (data.session) {
+          onLogin?.();
+        } else {
+          showPopup(
+            'success',
+            'Cek email kamu',
+            'Akun berhasil dibuat. Buka link konfirmasi dari Supabase sebelum masuk ke Vitara.'
+          );
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Autentikasi gagal. Silakan coba lagi.';
+      showPopup('error', isLoginView ? 'Login gagal' : 'Daftar akun gagal', getFriendlyAuthError(message));
+    } finally {
+      setIsEmailLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      showPopup('error', 'Konfigurasi belum lengkap', 'VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY belum dikonfigurasi di file .env.');
+      return;
+    }
+
+    setIsGoogleLoading(true);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+
+    if (error) {
+      console.error('Supabase Google OAuth failed:', error);
+      setIsGoogleLoading(false);
+      showPopup('error', 'Login Google gagal', error.message || 'Supabase tidak dapat memulai login Google. Silakan coba lagi.');
+    }
   };
 
   return (
@@ -114,28 +169,120 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <VitaraLogo className="text-3xl md:text-4xl" />
         </div>
 
-        <div className="text-center mb-8">
-          <h1 className="text-[24px] md:text-[28px] font-black text-[#2B4B3D] dark:text-stone-50 tracking-tight mb-2">
-            Welcome back
-          </h1>
-          <p className="text-[14px] text-[#8CAAB8] dark:text-stone-400 font-medium">
-            Masuk aman dengan akun Google untuk melanjutkan perjalanan Vitara.
-          </p>
+        <div className={`transition-opacity duration-300 ease-in-out ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
+          <div className="text-center mb-8">
+            <h1 className="text-[24px] md:text-[28px] font-black text-[#2B4B3D] dark:text-stone-50 tracking-tight mb-2">
+              {isLoginView ? 'Welcome back' : 'Create an account'}
+            </h1>
+            <p className="text-[14px] text-[#8CAAB8] dark:text-stone-400 font-medium">
+              {isLoginView ? 'Masuk dengan email atau Google melalui Supabase.' : 'Mulai perjalananmu bersama Vitara.'}
+            </p>
+          </div>
+
+          <form onSubmit={handleEmailAuth} className="flex flex-col gap-4 relative z-10">
+            {!isLoginView && (
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8CAAB8] dark:text-stone-500 group-focus-within:text-[#1DB38A] dark:group-focus-within:text-[#8CE0A7] transition-colors">
+                  <User size={18} strokeWidth={2.5} />
+                </div>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Nama Lengkap"
+                  required={!isLoginView}
+                  disabled={isAuthenticating}
+                  className="w-full bg-white/50 dark:bg-stone-800/40 border border-[#E8F0EA] dark:border-stone-700/50 rounded-[20px] py-3.5 pl-12 pr-4 text-[14px] font-bold text-[#2B4B3D] dark:text-stone-100 placeholder-[#8CAAB8]/70 focus:outline-none focus:border-[#1DB38A] dark:focus:border-[#8CE0A7] focus:ring-1 focus:ring-[#1DB38A] dark:focus:ring-[#8CE0A7] transition-all backdrop-blur-sm disabled:opacity-70"
+                />
+              </div>
+            )}
+
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8CAAB8] dark:text-stone-500 group-focus-within:text-[#1DB38A] dark:group-focus-within:text-[#8CE0A7] transition-colors">
+                <Mail size={18} strokeWidth={2.5} />
+              </div>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Alamat Email"
+                required
+                disabled={isAuthenticating}
+                className="w-full bg-white/50 dark:bg-stone-800/40 border border-[#E8F0EA] dark:border-stone-700/50 rounded-[20px] py-3.5 pl-12 pr-4 text-[14px] font-bold text-[#2B4B3D] dark:text-stone-100 placeholder-[#8CAAB8]/70 focus:outline-none focus:border-[#1DB38A] dark:focus:border-[#8CE0A7] focus:ring-1 focus:ring-[#1DB38A] dark:focus:ring-[#8CE0A7] transition-all backdrop-blur-sm disabled:opacity-70"
+              />
+            </div>
+
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8CAAB8] dark:text-stone-500 group-focus-within:text-[#1DB38A] dark:group-focus-within:text-[#8CE0A7] transition-colors">
+                <Lock size={18} strokeWidth={2.5} />
+              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Kata Sandi"
+                required
+                disabled={isAuthenticating}
+                minLength={6}
+                className="w-full bg-white/50 dark:bg-stone-800/40 border border-[#E8F0EA] dark:border-stone-700/50 rounded-[20px] py-3.5 pl-12 pr-4 text-[14px] font-bold text-[#2B4B3D] dark:text-stone-100 placeholder-[#8CAAB8]/70 focus:outline-none focus:border-[#1DB38A] dark:focus:border-[#8CE0A7] focus:ring-1 focus:ring-[#1DB38A] dark:focus:ring-[#8CE0A7] transition-all backdrop-blur-sm disabled:opacity-70"
+              />
+            </div>
+
+            {isLoginView && (
+              <div className="flex justify-end">
+                <button type="button" className="text-[12px] font-bold text-[#1DB38A] dark:text-[#8CE0A7] hover:underline focus:outline-none">
+                  Lupa kata sandi?
+                </button>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isAuthenticating}
+              className="group relative w-full mt-2 py-4 rounded-[20px] bg-[#2B4B3D] dark:bg-[#8CE0A7] text-white dark:text-[#121413] font-black text-[15px] flex justify-center items-center gap-2 shadow-[0_8px_30px_rgba(43,75,61,0.15)] hover:shadow-[0_0_24px_rgba(140,224,167,0.4)] focus:outline-none focus:ring-2 focus:ring-[#1DB38A] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isEmailLoading ? (
+                <Skeleton className="h-5 w-32 bg-white/25 dark:bg-[#121413]/20" />
+              ) : (
+                <>
+                  <span>{isLoginView ? 'Masuk Sekarang' : 'Daftar Sekarang'}</span>
+                  <ArrowRight size={18} strokeWidth={3} className="group-hover:translate-x-1 transition-transform duration-300" />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="flex items-center my-6 relative z-10">
+            <div className="flex-grow h-px bg-[#E8F0EA] dark:bg-stone-800"></div>
+            <span className="px-4 text-[12px] font-bold text-[#8CAAB8] dark:text-stone-500 uppercase tracking-wider">OR</span>
+            <div className="flex-grow h-px bg-[#E8F0EA] dark:bg-stone-800"></div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={isAuthenticating}
+            className="w-full relative z-10 flex items-center justify-center gap-3 bg-white dark:bg-stone-800 border border-[#E8F0EA] dark:border-stone-700 hover:border-[#1DB38A] dark:hover:border-[#8CE0A7] text-[#2B4B3D] dark:text-stone-200 font-bold text-[14px] py-3.5 rounded-[20px] transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1DB38A] disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {isGoogleLoading ? (
+              <Skeleton className="h-5 w-36 bg-[#E8F0EA] dark:bg-stone-700" />
+            ) : (
+              <>
+                <GoogleIcon />
+                <span>Continue with Google</span>
+              </>
+            )}
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={handleLoginClick}
-          disabled={isAuthenticating}
-          className="w-full relative z-10 flex items-center justify-center gap-3 bg-white dark:bg-stone-800 border border-[#E8F0EA] dark:border-stone-700 hover:border-[#1DB38A] dark:hover:border-[#8CE0A7] text-[#2B4B3D] dark:text-stone-200 font-bold text-[14px] py-3.5 rounded-[20px] transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1DB38A] disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          {isAuthenticating ? <Loader2 size={18} className="animate-spin" /> : <GoogleIcon />}
-          <span>{isAuthenticating ? 'Menghubungkan Google...' : 'Continue with Google'}</span>
-        </button>
-
-        <p className="mt-6 text-center text-[12px] leading-relaxed font-medium text-[#8CAAB8] dark:text-stone-500">
-          Kami hanya menggunakan profil dasar Google untuk mengenali akunmu di Vitara.
-        </p>
+        <div className="mt-8 text-center relative z-10">
+          <p className="text-[13px] font-medium text-[#8CAAB8] dark:text-stone-400">
+            {isLoginView ? 'Belum punya akun? ' : 'Sudah punya akun? '}
+            <button type="button" onClick={toggleView} disabled={isAuthenticating} className="font-bold text-[#1DB38A] dark:text-[#8CE0A7] hover:underline focus:outline-none disabled:opacity-60">
+              {isLoginView ? 'Daftar di sini' : 'Masuk di sini'}
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );

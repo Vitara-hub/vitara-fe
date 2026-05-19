@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { User } from '@supabase/supabase-js';
+import { supabase } from '@/services/supabase';
 
 export interface BaseActivityLog { 
   id: number; 
@@ -36,13 +38,30 @@ export interface AuthUser {
   name: string;
 }
 
+function mapSupabaseUser(user: User): AuthUser {
+  const metadata = user.user_metadata ?? {};
+  const displayName = metadata.full_name || metadata.name || user.email || 'Vitara User';
+  const photoURL = metadata.avatar_url || metadata.picture || '';
+
+  return {
+    uid: user.id,
+    email: user.email || '',
+    displayName,
+    photoURL,
+    name: displayName,
+  };
+}
+
 export type VeeHealthStatus = 'fresh' | 'tired' | 'sick' | 'stressed' | 'waiting';
 
 interface StoreState {
   isAuthenticated: boolean;
+  isAuthLoading: boolean;
   user: AuthUser | null;
   login: (user: AuthUser) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
+  setAuthUser: (user: AuthUser | null) => void;
+  initAuth: () => Promise<() => void>;
 
   isDarkMode: boolean;
   toggleDarkMode: () => void;
@@ -67,9 +86,41 @@ const useStore = create<StoreState>()(
   persist(
     (set) => ({
       isAuthenticated: false,
+      isAuthLoading: true,
       user: null,
-      login: (user) => set({ isAuthenticated: true, user }),
-      logout: () => set({ isAuthenticated: false, user: null }),
+      login: (user) => set({ isAuthenticated: true, isAuthLoading: false, user }),
+      logout: async () => {
+        await supabase.auth.signOut();
+        set({ isAuthenticated: false, isAuthLoading: false, user: null });
+      },
+      setAuthUser: (user) => set({ isAuthenticated: Boolean(user), isAuthLoading: false, user }),
+      initAuth: async () => {
+        set({ isAuthLoading: true });
+
+        try {
+          const { data, error } = await supabase.auth.getSession();
+          if (error) throw error;
+
+          set({
+            isAuthenticated: Boolean(data.session?.user),
+            isAuthLoading: false,
+            user: data.session?.user ? mapSupabaseUser(data.session.user) : null,
+          });
+        } catch (error) {
+          console.error('Supabase auth session check failed:', error);
+          set({ isAuthenticated: false, isAuthLoading: false, user: null });
+        }
+
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+          set({
+            isAuthenticated: Boolean(session?.user),
+            isAuthLoading: false,
+            user: session?.user ? mapSupabaseUser(session.user) : null,
+          });
+        });
+
+        return () => listener.subscription.unsubscribe();
+      },
       
       isDarkMode: false, 
       toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
@@ -102,7 +153,19 @@ const useStore = create<StoreState>()(
       isServerDown: false,
       setServerDown: (status) => set({ isServerDown: status }),
     }),
-    { name: 'vitara-storage' }
+    {
+      name: 'vitara-storage',
+      partialize: (state) => ({
+        isAuthenticated: state.isAuthenticated,
+        user: state.user,
+        isDarkMode: state.isDarkMode,
+        veeHealth: state.veeHealth,
+        veeWeight: state.veeWeight,
+        activityHistory: state.activityHistory,
+        latestMetrics: state.latestMetrics,
+        isServerDown: state.isServerDown,
+      }),
+    }
   )
 );
 

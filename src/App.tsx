@@ -20,7 +20,7 @@ const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 export type ViewType = 'landing' | 'login' | 'dashboard' | 'logbook' | 'activity' | 'chat' | 'profile';
 
 export default function App() {
-  const { isAuthenticated, isDarkMode, toggleDarkMode, veeHealth } = useStore();
+  const { isAuthenticated, isAuthLoading, isDarkMode, toggleDarkMode, veeHealth, initAuth } = useStore();
   const [currentView, setCurrentView] = useState<ViewType>('landing');
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const isKeyboardVisible = useKeyboardVisible();
@@ -29,12 +29,24 @@ export default function App() {
   useAutoSync();
 
   useEffect(() => {
+    let cleanup: (() => void) | undefined;
+
+    initAuth().then((unsubscribe) => {
+      cleanup = unsubscribe;
+    });
+
+    return () => cleanup?.();
+  }, [initAuth]);
+
+  useEffect(() => {
+    if (isAuthLoading) return;
+
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
                   ('standalone' in window.navigator && (window.navigator as any).standalone === true);
 
     if (isAuthenticated) setCurrentView('dashboard');
     else setCurrentView(isPWA ? 'login' : 'landing');
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isAuthLoading]);
 
   useEffect(() => {
     if (isDarkMode) document.documentElement.classList.add('dark');
@@ -94,9 +106,13 @@ export default function App() {
           <div className="flex-1 flex flex-col relative min-w-0 overflow-hidden">
             <main className="flex-1 flex flex-col w-full relative items-center min-h-0">
               <div className={`flex-1 flex flex-col w-full relative min-h-0 overflow-hidden ${currentView !== 'landing' && currentView !== 'login' ? 'max-w-4xl mx-auto' : ''}`}>
-                <Suspense fallback={<PageLoader />}>
-                  {renderView()}
-                </Suspense>
+                {isAuthLoading ? (
+                  <PageLoader />
+                ) : (
+                  <Suspense fallback={<PageLoader />}>
+                    {renderView()}
+                  </Suspense>
+                )}
               </div>
             </main>
 
