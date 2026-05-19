@@ -32,7 +32,7 @@ export default function ProfilePage() {
       <div className="p-6 space-y-6">
         {isLoading ? (
           <>
-            <nav aria-label="Memuat pengaturan akun" className="bg-white dark:bg-[#1A1D1B] rounded-[28px] p-2 shadow-sm border border-[#E8F0EA] dark:border-stone-800 space-y-1">
+            <nav aria-hidden="true" className="bg-white dark:bg-[#1A1D1B] rounded-[28px] p-2 shadow-sm border border-[#E8F0EA] dark:border-stone-800 space-y-1">
               {[0, 1, 2].map((item) => (
                 <div key={item} className="w-full flex items-center justify-between p-4 rounded-[20px]">
                   <div className="flex items-center gap-4 flex-1">
@@ -44,7 +44,7 @@ export default function ProfilePage() {
               ))}
             </nav>
 
-            <section aria-label="Memuat zona bahaya" className="pt-2">
+            <section aria-hidden="true" className="pt-2">
               <Skeleton className="h-3 w-24 mx-4 mb-3" />
               <div className="bg-white dark:bg-[#1A1D1B] rounded-[28px] p-2 shadow-sm border border-[#E8F0EA] dark:border-stone-800 space-y-1">
                 {[0, 1].map((item) => (

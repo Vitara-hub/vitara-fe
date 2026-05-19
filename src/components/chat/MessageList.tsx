@@ -42,7 +42,6 @@ export default function MessageList({ messages, isLoading, bottomRef }: MessageL
         </div>
       ))}
       
-      {/* Indikator Loading */}
       {isLoading && (
         <div className="flex justify-start items-end gap-2">
           <Skeleton className="w-8 h-8 rounded-full shrink-0" />

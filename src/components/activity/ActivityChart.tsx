@@ -47,10 +47,18 @@ export default function ActivityChart({ veeHealth, veeWeight, isLoading = false 
           const isToday = i === 5; 
           return (
             <div key={day} className="flex flex-col items-center gap-3 flex-1 group cursor-pointer">
-              <div className={`w-full ${heights[i]} ${isLoading ? 'animate-pulse bg-[#E8F0EA] dark:bg-stone-800' : isToday ? 'bg-[#8CE0A7]' : 'bg-[#F4F6F5] dark:bg-stone-800 group-hover:bg-[#D5E5DB] dark:group-hover:bg-stone-700'} rounded-[8px] transition-colors duration-300 relative`}>
-                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#2B4B3D] text-white text-[9px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">8{i}</div>
-              </div>
-              {isLoading ? <Skeleton className="h-2.5 w-6" /> : <span className={`text-[10px] font-bold ${isToday ? 'text-[#2B4B3D] dark:text-[#8CE0A7]' : 'text-[#8CAAB8]'}`}>{day}</span>}
+              {isLoading ? (
+                <Skeleton className={`w-full ${heights[i]} rounded-[8px]`} />
+              ) : (
+                <div className={`w-full ${heights[i]} ${isToday ? 'bg-[#8CE0A7]' : 'bg-[#F4F6F5] dark:bg-stone-800 group-hover:bg-[#D5E5DB] dark:group-hover:bg-stone-700'} rounded-[8px] transition-colors duration-300 relative`}>
+                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#2B4B3D] text-white text-[9px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">8{i}</div>
+                </div>
+              )}
+              {isLoading ? (
+                <Skeleton className="h-2.5 w-6" />
+              ) : (
+                <span className={`text-[10px] font-bold ${isToday ? 'text-[#2B4B3D] dark:text-[#8CE0A7]' : 'text-[#8CAAB8]'}`}>{day}</span>
+              )}
             </div>
           );
         })}

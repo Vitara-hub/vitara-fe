@@ -7,7 +7,7 @@ import useHardwareEcoMode from '@/hooks/useHardwareEcoMode';
 import BottomNav from '@/components/layout/BottomNav';
 import Sidebar from '@/components/layout/Sidebar';
 import SplashScreen from '@/components/layout/SplashScreen';
-import { Activity } from 'lucide-react';
+import Skeleton from '@/components/ui/Skeleton';
 
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
@@ -60,9 +60,24 @@ export default function App() {
   };
 
   const PageLoader = () => (
-    <div className="absolute inset-0 flex flex-col items-center justify-center w-full h-full text-[#8CE0A7] bg-[#FAF9F6] dark:bg-[#121413] z-50">
-      <Activity size={32} className="animate-pulse" />
-      <p className="text-xs font-bold mt-4 tracking-widest uppercase opacity-70">Memuat...</p>
+    <div className="absolute inset-0 w-full h-full bg-[#FAF9F6] dark:bg-[#121413] z-50 p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Skeleton className="w-12 h-12 rounded-[20px]" />
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-5 w-44 max-w-[54vw]" />
+          </div>
+        </div>
+        <Skeleton className="w-10 h-10 rounded-[16px]" />
+      </div>
+      <Skeleton className="h-40 w-full rounded-[28px]" />
+      <div className="grid grid-cols-2 gap-4">
+        <Skeleton className="h-32 rounded-[24px]" />
+        <Skeleton className="h-32 rounded-[24px]" />
+        <Skeleton className="h-32 rounded-[24px]" />
+        <Skeleton className="h-32 rounded-[24px]" />
+      </div>
     </div>
   );
 
