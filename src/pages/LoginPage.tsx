@@ -1,14 +1,17 @@
 // src/pages/LoginPage.tsx
-import { useState, FormEvent } from 'react';
-import { Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { FormEvent, useEffect, useState } from 'react';
+import { ArrowRight, Lock, Mail, User } from 'lucide-react';
 import VitaraLogo from '@/components/ui/VitaraLogo';
+import PopupAlert, { PopupState } from '@/components/ui/PopupAlert';
+import { isSupabaseConfigured, supabase } from '@/services/supabase';
+import useStore, { getFriendlyAuthError } from '@/store/useStore';
 
 interface LoginPageProps {
   onLogin?: () => void;
 }
 
 const GoogleIcon = () => (
-  <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0">
+  <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0" aria-hidden="true">
     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -16,32 +19,135 @@ const GoogleIcon = () => (
   </svg>
 );
 
+const initialPopup: PopupState = {
+  isOpen: false,
+  title: '',
+  message: '',
+  type: 'info',
+};
+
 export default function LoginPage({ onLogin }: LoginPageProps) {
+  const { user, isAuthLoading } = useStore();
   const [isLoginView, setIsLoginView] = useState<boolean>(true);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
+  const [fullName, setFullName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [isEmailLoading, setIsEmailLoading] = useState<boolean>(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
+  const [popup, setPopup] = useState<PopupState>(initialPopup);
+
+  const isAuthenticating = isEmailLoading || isGoogleLoading;
+
+  const showPopup = (type: PopupState['type'], title: string, message: string) => {
+    setPopup({ isOpen: true, type, title, message });
+  };
 
   const toggleView = () => {
     setIsAnimating(true);
     setTimeout(() => {
-      setIsLoginView(!isLoginView);
+      setIsLoginView((current) => !current);
       setIsAnimating(false);
     }, 300);
   };
 
-  // Menggunakan FormEvent agar e.preventDefault terdeteksi
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    if (!isAuthLoading && user) onLogin?.();
+  }, [isAuthLoading, onLogin, user]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search || window.location.hash.replace('#', '?'));
+    const errorDescription = params.get('error_description') || params.get('error');
+
+    if (errorDescription) {
+      showPopup('error', 'Login Google gagal', getFriendlyAuthError(decodeURIComponent(errorDescription).replace(/\+/g, ' ')));
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  const handleEmailAuth = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (onLogin) onLogin();
+
+    if (!isSupabaseConfigured) {
+      showPopup('error', 'Login belum tersedia', 'Layanan login sedang disiapkan. Silakan coba lagi nanti.');
+      return;
+    }
+
+    if (!email.trim() || !password) {
+      showPopup('error', 'Data belum lengkap', 'Isi email dan password terlebih dahulu.');
+      return;
+    }
+
+    setIsEmailLoading(true);
+
+    try {
+      if (isLoginView) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (error) throw error;
+        if (data.session) onLogin?.();
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              full_name: fullName.trim() || email.trim(),
+            },
+            emailRedirectTo: `${window.location.origin}/dashboard`,
+          },
+        });
+
+        if (error) throw error;
+
+        if (data.session) {
+          onLogin?.();
+        } else {
+          showPopup(
+            'success',
+            'Cek email kamu',
+            'Akun berhasil dibuat. Buka link konfirmasi di email kamu sebelum masuk ke Vitara.'
+          );
+        }
+      }
+    } catch (error) {
+      showPopup('error', isLoginView ? 'Login gagal' : 'Daftar akun gagal', getFriendlyAuthError(error));
+    } finally {
+      setIsEmailLoading(false);
+    }
   };
 
-  const handleGoogleOAuth = () => {
-    if (onLogin) onLogin();
+  const handleGoogleLogin = async () => {
+    if (!isSupabaseConfigured) {
+      showPopup('error', 'Login belum tersedia', 'Layanan login sedang disiapkan. Silakan coba lagi nanti.');
+      return;
+    }
+
+    setIsGoogleLoading(true);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+
+    if (error) {
+      setIsGoogleLoading(false);
+      showPopup('error', 'Login Google gagal', getFriendlyAuthError(error));
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center relative bg-[#FAF9F6] dark:bg-[#121413] transition-colors duration-300 overflow-hidden px-4 md:px-0">
-      {/* SVG Background, Noise, & Ambient divs ... Sama Persis dengan milik Anda */}
-      {/* (Untuk menghemat output chat, saya lewati markup SVG noise & ambient tapi pastikan masuk di kodenya) */}
+      <PopupAlert {...popup} onClose={() => setPopup(initialPopup)} />
       
       <div className="absolute inset-0 pointer-events-none opacity-[0.03] mix-blend-overlay z-0" style={{ filter: 'url(#noiseFilter)' }}></div>
 
@@ -49,9 +155,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       <div className="absolute bottom-[5%] md:bottom-[10%] right-[10%] md:right-[20%] w-[50vw] h-[50vw] md:w-[25vw] md:h-[25vw] bg-[#FF9F66] rounded-full blur-[100px] md:blur-[120px] opacity-10 animate-ambient pointer-events-none z-0" style={{ animationDelay: '3s', animationDirection: 'reverse' }}></div>
 
       <div className="relative z-10 w-full max-w-[420px] glass-noise bg-white/60 dark:bg-[#1A1D1B]/60 backdrop-blur-3xl border border-white/60 dark:border-stone-700/50 rounded-[32px] p-8 md:p-10 shadow-[0_30px_80px_rgba(29,179,138,0.08)] dark:shadow-2xl flex flex-col">
-        
         <div className="flex justify-center mb-8">
-           <VitaraLogo className="text-3xl md:text-4xl" />
+          <VitaraLogo className="text-3xl md:text-4xl" />
         </div>
 
         <div className={`transition-opacity duration-300 ease-in-out ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
@@ -60,14 +165,82 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               {isLoginView ? 'Welcome back' : 'Create an account'}
             </h1>
             <p className="text-[14px] text-[#8CAAB8] dark:text-stone-400 font-medium">
-              {isLoginView ? 'Kenali dirimu, rasakan perubahannya.' : 'Mulai perjalananmu menuju versi terbaik.'}
+              {isLoginView ? 'Masuk dengan email atau Google.' : 'Mulai perjalananmu bersama Vitara.'}
             </p>
           </div>
 
-          <button type="button" onClick={handleGoogleOAuth} className="w-full relative z-10 flex items-center justify-center gap-3 bg-white dark:bg-stone-800 border border-[#E8F0EA] dark:border-stone-700 hover:border-[#1DB38A] dark:hover:border-[#8CE0A7] text-[#2B4B3D] dark:text-stone-200 font-bold text-[14px] py-3.5 rounded-[20px] transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1DB38A]">
-            <GoogleIcon />
-            <span>Continue with Google</span>
-          </button>
+          <form onSubmit={handleEmailAuth} className="flex flex-col gap-4 relative z-10">
+            {!isLoginView && (
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8CAAB8] dark:text-stone-500 group-focus-within:text-[#1DB38A] dark:group-focus-within:text-[#8CE0A7] transition-colors">
+                  <User size={18} strokeWidth={2.5} />
+                </div>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Nama Lengkap"
+                  required={!isLoginView}
+                  disabled={isAuthenticating}
+                  className="w-full bg-white/50 dark:bg-stone-800/40 border border-[#E8F0EA] dark:border-stone-700/50 rounded-[20px] py-3.5 pl-12 pr-4 text-[14px] font-bold text-[#2B4B3D] dark:text-stone-100 placeholder-[#8CAAB8]/70 focus:outline-none focus:border-[#1DB38A] dark:focus:border-[#8CE0A7] focus:ring-1 focus:ring-[#1DB38A] dark:focus:ring-[#8CE0A7] transition-all backdrop-blur-sm disabled:opacity-70"
+                />
+              </div>
+            )}
+
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8CAAB8] dark:text-stone-500 group-focus-within:text-[#1DB38A] dark:group-focus-within:text-[#8CE0A7] transition-colors">
+                <Mail size={18} strokeWidth={2.5} />
+              </div>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Alamat Email"
+                required
+                disabled={isAuthenticating}
+                className="w-full bg-white/50 dark:bg-stone-800/40 border border-[#E8F0EA] dark:border-stone-700/50 rounded-[20px] py-3.5 pl-12 pr-4 text-[14px] font-bold text-[#2B4B3D] dark:text-stone-100 placeholder-[#8CAAB8]/70 focus:outline-none focus:border-[#1DB38A] dark:focus:border-[#8CE0A7] focus:ring-1 focus:ring-[#1DB38A] dark:focus:ring-[#8CE0A7] transition-all backdrop-blur-sm disabled:opacity-70"
+              />
+            </div>
+
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8CAAB8] dark:text-stone-500 group-focus-within:text-[#1DB38A] dark:group-focus-within:text-[#8CE0A7] transition-colors">
+                <Lock size={18} strokeWidth={2.5} />
+              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Kata Sandi"
+                required
+                disabled={isAuthenticating}
+                minLength={6}
+                className="w-full bg-white/50 dark:bg-stone-800/40 border border-[#E8F0EA] dark:border-stone-700/50 rounded-[20px] py-3.5 pl-12 pr-4 text-[14px] font-bold text-[#2B4B3D] dark:text-stone-100 placeholder-[#8CAAB8]/70 focus:outline-none focus:border-[#1DB38A] dark:focus:border-[#8CE0A7] focus:ring-1 focus:ring-[#1DB38A] dark:focus:ring-[#8CE0A7] transition-all backdrop-blur-sm disabled:opacity-70"
+              />
+            </div>
+
+            {isLoginView && (
+              <div className="flex justify-end">
+                <button type="button" className="text-[12px] font-bold text-[#1DB38A] dark:text-[#8CE0A7] hover:underline focus:outline-none">
+                  Lupa kata sandi?
+                </button>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isAuthenticating}
+              className="group relative w-full mt-2 py-4 rounded-[20px] bg-[#2B4B3D] dark:bg-[#8CE0A7] text-white dark:text-[#121413] font-black text-[15px] flex justify-center items-center gap-2 shadow-[0_8px_30px_rgba(43,75,61,0.15)] hover:shadow-[0_0_24px_rgba(140,224,167,0.4)] focus:outline-none focus:ring-2 focus:ring-[#1DB38A] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isEmailLoading ? (
+                <span>Authenticating...</span>
+              ) : (
+                <>
+                  <span>{isLoginView ? 'Masuk Sekarang' : 'Daftar Sekarang'}</span>
+                  <ArrowRight size={18} strokeWidth={3} className="group-hover:translate-x-1 transition-transform duration-300" />
+                </>
+              )}
+            </button>
+          </form>
 
           <div className="flex items-center my-6 relative z-10">
             <div className="flex-grow h-px bg-[#E8F0EA] dark:bg-stone-800"></div>
@@ -75,46 +248,28 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             <div className="flex-grow h-px bg-[#E8F0EA] dark:bg-stone-800"></div>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 relative z-10">
-            {!isLoginView && (
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8CAAB8] dark:text-stone-500 group-focus-within:text-[#1DB38A] dark:group-focus-within:text-[#8CE0A7] transition-colors">
-                  <User size={18} strokeWidth={2.5} />
-                </div>
-                <input type="text" placeholder="Nama Lengkap" required={!isLoginView} className="w-full bg-white/50 dark:bg-stone-800/40 border border-[#E8F0EA] dark:border-stone-700/50 rounded-[20px] py-3.5 pl-12 pr-4 text-[14px] font-bold text-[#2B4B3D] dark:text-stone-100 placeholder-[#8CAAB8]/70 focus:outline-none focus:border-[#1DB38A] dark:focus:border-[#8CE0A7] focus:ring-1 focus:ring-[#1DB38A] dark:focus:ring-[#8CE0A7] transition-all backdrop-blur-sm" />
-              </div>
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={isAuthenticating}
+            className="w-full relative z-10 flex items-center justify-center gap-3 bg-white dark:bg-stone-800 border border-[#E8F0EA] dark:border-stone-700 hover:border-[#1DB38A] dark:hover:border-[#8CE0A7] text-[#2B4B3D] dark:text-stone-200 font-bold text-[14px] py-3.5 rounded-[20px] transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1DB38A] disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {isGoogleLoading ? (
+              <span>Authenticating...</span>
+            ) : (
+              <>
+                <GoogleIcon />
+                <span>Continue with Google</span>
+              </>
             )}
-            <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8CAAB8] dark:text-stone-500 group-focus-within:text-[#1DB38A] dark:group-focus-within:text-[#8CE0A7] transition-colors">
-                <Mail size={18} strokeWidth={2.5} />
-              </div>
-              <input type="email" placeholder="Alamat Email" required className="w-full bg-white/50 dark:bg-stone-800/40 border border-[#E8F0EA] dark:border-stone-700/50 rounded-[20px] py-3.5 pl-12 pr-4 text-[14px] font-bold text-[#2B4B3D] dark:text-stone-100 placeholder-[#8CAAB8]/70 focus:outline-none focus:border-[#1DB38A] dark:focus:border-[#8CE0A7] focus:ring-1 focus:ring-[#1DB38A] dark:focus:ring-[#8CE0A7] transition-all backdrop-blur-sm" />
-            </div>
-            <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8CAAB8] dark:text-stone-500 group-focus-within:text-[#1DB38A] dark:group-focus-within:text-[#8CE0A7] transition-colors">
-                <Lock size={18} strokeWidth={2.5} />
-              </div>
-              <input type="password" placeholder="Kata Sandi" required className="w-full bg-white/50 dark:bg-stone-800/40 border border-[#E8F0EA] dark:border-stone-700/50 rounded-[20px] py-3.5 pl-12 pr-4 text-[14px] font-bold text-[#2B4B3D] dark:text-stone-100 placeholder-[#8CAAB8]/70 focus:outline-none focus:border-[#1DB38A] dark:focus:border-[#8CE0A7] focus:ring-1 focus:ring-[#1DB38A] dark:focus:ring-[#8CE0A7] transition-all backdrop-blur-sm" />
-            </div>
-
-            {isLoginView && (
-              <div className="flex justify-end">
-                <button type="button" className="text-[12px] font-bold text-[#1DB38A] dark:text-[#8CE0A7] hover:underline focus:outline-none">Lupa kata sandi?</button>
-              </div>
-            )}
-
-            <button type="submit" className="group relative w-full mt-2 py-4 rounded-[20px] bg-[#2B4B3D] dark:bg-[#8CE0A7] text-white dark:text-[#121413] font-black text-[15px] flex justify-center items-center gap-2 shadow-[0_8px_30px_rgba(43,75,61,0.15)] hover:shadow-[0_0_24px_rgba(140,224,167,0.4)] focus:outline-none focus:ring-2 focus:ring-[#1DB38A] transition-all duration-300">
-              <span>{isLoginView ? 'Masuk Sekarang' : 'Daftar Sekarang'}</span>
-              <ArrowRight size={18} strokeWidth={3} className="group-hover:translate-x-1 transition-transform duration-300" />
-            </button>
-          </form>
+          </button>
         </div>
 
         <div className="mt-8 text-center relative z-10">
           <p className="text-[13px] font-medium text-[#8CAAB8] dark:text-stone-400">
-            {isLoginView ? "Belum punya akun? " : "Sudah punya akun? "}
-            <button type="button" onClick={toggleView} className="font-bold text-[#1DB38A] dark:text-[#8CE0A7] hover:underline focus:outline-none">
-              {isLoginView ? "Daftar di sini" : "Masuk di sini"}
+            {isLoginView ? 'Belum punya akun? ' : 'Sudah punya akun? '}
+            <button type="button" onClick={toggleView} disabled={isAuthenticating} className="font-bold text-[#1DB38A] dark:text-[#8CE0A7] hover:underline focus:outline-none disabled:opacity-60">
+              {isLoginView ? 'Daftar di sini' : 'Masuk di sini'}
             </button>
           </p>
         </div>

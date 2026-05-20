@@ -1,7 +1,8 @@
 // src/pages/LogbookPage.tsx
 import { useState, useRef, useEffect } from 'react';
-import { Moon, Brain, Utensils, LucideIcon } from 'lucide-react';
+import { Download, Moon, Brain, Utensils, LucideIcon } from 'lucide-react';
 import useStore, { VeeHealthStatus } from '@/store/useStore';
+import PopupAlert, { PopupState } from '@/components/ui/PopupAlert';
 
 // Mengimpor sub-komponen
 import JournalTab from '@/components/logbook/JournalTab';
@@ -11,6 +12,13 @@ import SleepTab from '@/components/logbook/SleepTab';
 // 1. Tipe eksklusif untuk Tab yang tersedia
 type TabType = 'mood' | 'nutrition' | 'sleep';
 type JumpDirection = 'fromLeft' | 'fromRight' | 'none' | null;
+
+const closedAlert: PopupState = {
+  isOpen: false,
+  title: '',
+  message: '',
+  type: 'info',
+};
 
 // 2. Interface Props untuk TabButton
 interface TabButtonProps {
@@ -39,6 +47,7 @@ export default function LogbookPage() {
   const [activeTab, setActiveTab] = useState<TabType>('mood'); 
   const [jumpDirection, setJumpDirection] = useState<JumpDirection>(null);
   const [eyePosition, setEyePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [alertConfig, setAlertConfig] = useState<PopupState>(closedAlert);
   
   const prevTabIndex = useRef<number>(0);
   
@@ -53,6 +62,17 @@ export default function LogbookPage() {
   const setVeeWeight = (updater: number | ((prev: number) => number)) => {
     const newWeight = typeof updater === 'function' ? updater(veeWeight) : updater;
     setVeeState(veeHealth, newWeight);
+  };
+
+  const closeAlert = () => setAlertConfig((current) => ({ ...current, isOpen: false }));
+
+  const showUnderConstruction = () => {
+    setAlertConfig({
+      isOpen: true,
+      title: 'Under Construction',
+      message: 'This feature is currently being developed. Stay tuned!',
+      type: 'info',
+    });
   };
 
   const handleTabChange = (tab: TabType) => {
@@ -78,10 +98,21 @@ export default function LogbookPage() {
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-300 bg-[#F4F6F5] dark:bg-[#121413]">
+      <PopupAlert {...alertConfig} onClose={closeAlert} />
       
       {/* HEADER (Sticky) */}
       <div className="px-6 pt-10 pb-4 shrink-0 sticky top-0 z-20 bg-[#F4F6F5]/90 dark:bg-[#121413]/90 backdrop-blur-xl">
-        <h2 className="text-3xl font-black text-[#244135] dark:text-stone-50 mb-6 tracking-tight">Pencatatan</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-3xl font-black text-[#244135] dark:text-stone-50 tracking-tight">Pencatatan</h2>
+          <button
+            type="button"
+            aria-label="Export logbook"
+            onClick={showUnderConstruction}
+            className="w-11 h-11 rounded-[16px] bg-white dark:bg-[#1A1D1B] border border-[#E8F0EA] dark:border-stone-800 text-[#2B4B3D] dark:text-[#8CE0A7] shadow-sm flex items-center justify-center hover:bg-[#E8F0EA] dark:hover:bg-stone-800 active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7]"
+          >
+            <Download size={18} strokeWidth={2.5} />
+          </button>
+        </div>
         
         <div className="relative flex bg-[#E8ECEA] dark:bg-stone-800/60 p-1.5 rounded-[20px] shadow-inner border border-white/50 dark:border-stone-700/50">
           <div
