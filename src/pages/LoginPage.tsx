@@ -3,9 +3,8 @@ import { FormEvent, useEffect, useState } from 'react';
 import { ArrowRight, Lock, Mail, User } from 'lucide-react';
 import VitaraLogo from '@/components/ui/VitaraLogo';
 import PopupAlert, { PopupState } from '@/components/ui/PopupAlert';
-import Skeleton from '@/components/ui/Skeleton';
 import { isSupabaseConfigured, supabase } from '@/services/supabase';
-import useStore from '@/store/useStore';
+import useStore, { getFriendlyAuthError } from '@/store/useStore';
 
 interface LoginPageProps {
   onLogin?: () => void;
@@ -26,24 +25,6 @@ const initialPopup: PopupState = {
   message: '',
   type: 'info',
 };
-
-function getFriendlyAuthError(message: string) {
-  const lowerMessage = message.toLowerCase();
-
-  if (lowerMessage.includes('invalid login credentials')) {
-    return 'Email atau password tidak sesuai. Periksa kembali lalu coba lagi.';
-  }
-
-  if (lowerMessage.includes('email not confirmed')) {
-    return 'Email belum dikonfirmasi. Cek inbox kamu untuk menyelesaikan verifikasi.';
-  }
-
-  if (lowerMessage.includes('user already registered')) {
-    return 'Email ini sudah terdaftar. Silakan masuk dengan password akun tersebut.';
-  }
-
-  return message || 'Autentikasi gagal. Silakan coba lagi.';
-}
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const { user, isAuthLoading } = useStore();
@@ -79,7 +60,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     const errorDescription = params.get('error_description') || params.get('error');
 
     if (errorDescription) {
-      showPopup('error', 'Login Google gagal', decodeURIComponent(errorDescription).replace(/\+/g, ' '));
+      showPopup('error', 'Login Google gagal', getFriendlyAuthError(decodeURIComponent(errorDescription).replace(/\+/g, ' ')));
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -88,7 +69,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     e.preventDefault();
 
     if (!isSupabaseConfigured) {
-      showPopup('error', 'Konfigurasi belum lengkap', 'VITE_SUPABASE_URL harus berupa URL project Supabase dan VITE_SUPABASE_ANON_KEY harus berisi anon public key.');
+      showPopup('error', 'Login belum tersedia', 'Layanan login sedang disiapkan. Silakan coba lagi nanti.');
       return;
     }
 
@@ -128,13 +109,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           showPopup(
             'success',
             'Cek email kamu',
-            'Akun berhasil dibuat. Buka link konfirmasi dari Supabase sebelum masuk ke Vitara.'
+            'Akun berhasil dibuat. Buka link konfirmasi di email kamu sebelum masuk ke Vitara.'
           );
         }
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Autentikasi gagal. Silakan coba lagi.';
-      showPopup('error', isLoginView ? 'Login gagal' : 'Daftar akun gagal', getFriendlyAuthError(message));
+      showPopup('error', isLoginView ? 'Login gagal' : 'Daftar akun gagal', getFriendlyAuthError(error));
     } finally {
       setIsEmailLoading(false);
     }
@@ -142,7 +122,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   const handleGoogleLogin = async () => {
     if (!isSupabaseConfigured) {
-      showPopup('error', 'Konfigurasi belum lengkap', 'VITE_SUPABASE_URL harus berupa URL project Supabase dan VITE_SUPABASE_ANON_KEY harus berisi anon public key.');
+      showPopup('error', 'Login belum tersedia', 'Layanan login sedang disiapkan. Silakan coba lagi nanti.');
       return;
     }
 
@@ -160,9 +140,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     });
 
     if (error) {
-      console.error('Supabase Google OAuth failed:', error);
       setIsGoogleLoading(false);
-      showPopup('error', 'Login Google gagal', error.message || 'Supabase tidak dapat memulai login Google. Silakan coba lagi.');
+      showPopup('error', 'Login Google gagal', getFriendlyAuthError(error));
     }
   };
 
@@ -186,7 +165,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               {isLoginView ? 'Welcome back' : 'Create an account'}
             </h1>
             <p className="text-[14px] text-[#8CAAB8] dark:text-stone-400 font-medium">
-              {isLoginView ? 'Masuk dengan email atau Google melalui Supabase.' : 'Mulai perjalananmu bersama Vitara.'}
+              {isLoginView ? 'Masuk dengan email atau Google.' : 'Mulai perjalananmu bersama Vitara.'}
             </p>
           </div>
 
@@ -253,7 +232,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               className="group relative w-full mt-2 py-4 rounded-[20px] bg-[#2B4B3D] dark:bg-[#8CE0A7] text-white dark:text-[#121413] font-black text-[15px] flex justify-center items-center gap-2 shadow-[0_8px_30px_rgba(43,75,61,0.15)] hover:shadow-[0_0_24px_rgba(140,224,167,0.4)] focus:outline-none focus:ring-2 focus:ring-[#1DB38A] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isEmailLoading ? (
-                <Skeleton className="h-5 w-32 bg-white/25 dark:bg-[#121413]/20" />
+                <span>Authenticating...</span>
               ) : (
                 <>
                   <span>{isLoginView ? 'Masuk Sekarang' : 'Daftar Sekarang'}</span>
@@ -276,7 +255,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             className="w-full relative z-10 flex items-center justify-center gap-3 bg-white dark:bg-stone-800 border border-[#E8F0EA] dark:border-stone-700 hover:border-[#1DB38A] dark:hover:border-[#8CE0A7] text-[#2B4B3D] dark:text-stone-200 font-bold text-[14px] py-3.5 rounded-[20px] transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1DB38A] disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isGoogleLoading ? (
-              <Skeleton className="h-5 w-36 bg-[#E8F0EA] dark:bg-stone-700" />
+              <span>Authenticating...</span>
             ) : (
               <>
                 <GoogleIcon />

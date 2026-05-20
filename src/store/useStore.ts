@@ -90,6 +90,45 @@ function removeSupabaseAuthParamsFromUrl() {
   window.history.replaceState({}, document.title, window.location.pathname);
 }
 
+export function getFriendlyAuthError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || '');
+  const lowerMessage = message.toLowerCase();
+
+  if (
+    lowerMessage.includes('invalid login credentials') ||
+    lowerMessage.includes('invalid credentials') ||
+    lowerMessage.includes('invalid_grant')
+  ) {
+    return 'Email atau password salah. Silakan coba lagi.';
+  }
+
+  if (lowerMessage.includes('email not confirmed')) {
+    return 'Email belum dikonfirmasi. Cek inbox kamu untuk menyelesaikan verifikasi.';
+  }
+
+  if (lowerMessage.includes('user already registered') || lowerMessage.includes('already registered')) {
+    return 'Email ini sudah terdaftar. Silakan masuk dengan password akun tersebut.';
+  }
+
+  if (lowerMessage.includes('password')) {
+    return 'Kata sandi belum memenuhi syarat. Gunakan minimal 6 karakter.';
+  }
+
+  if (lowerMessage.includes('rate limit') || lowerMessage.includes('too many')) {
+    return 'Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.';
+  }
+
+  if (lowerMessage.includes('network') || lowerMessage.includes('fetch')) {
+    return 'Koneksi bermasalah. Periksa internet kamu lalu coba lagi.';
+  }
+
+  if (lowerMessage.includes('provider') || lowerMessage.includes('oauth')) {
+    return 'Login Google belum bisa dimulai. Silakan coba lagi.';
+  }
+
+  return 'Proses autentikasi gagal. Silakan coba lagi.';
+}
+
 export type VeeHealthStatus = 'fresh' | 'tired' | 'sick' | 'stressed' | 'waiting';
 
 interface StoreState {
@@ -150,8 +189,6 @@ const useStore = create<StoreState>()(
         const isOAuthCallback = hasSupabaseAuthCallback();
 
         const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-          console.log('Auth State:', event, session);
-
           if (session?.user) {
             set({
               isAuthenticated: true,
@@ -228,8 +265,7 @@ const useStore = create<StoreState>()(
               if (retryData.session?.user) removeSupabaseAuthParamsFromUrl();
             }, 1200);
           }
-        } catch (error) {
-          console.error('Supabase auth session check failed:', error);
+        } catch {
           set({ isAuthenticated: false, isAuthLoading: false, user: null });
         }
 
