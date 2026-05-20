@@ -1,10 +1,15 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const apiOrigin = env.VITE_API_URL ? new URL(env.VITE_API_URL).origin : '';
+  const supabaseOrigin = env.VITE_SUPABASE_URL ? new URL(env.VITE_SUPABASE_URL).origin : '';
+
+  return {
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -14,20 +19,132 @@ export default defineConfig({
     tailwindcss(),
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      registerType: 'prompt',
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Vitara Ecosystem',
+        name: 'Vitara',
         short_name: 'Vitara',
-        description: 'Know yourself, feel better. AI-powered holistic health.',
-        theme_color: '#FAF9F6',
+        description: 'AI-driven health ecosystem',
         background_color: '#FAF9F6',
+        theme_color: '#8CE0A7',
         display: 'standalone',
+        orientation: 'portrait',
+        start_url: '/',
+        scope: '/',
+        id: '/',
         icons: [
-          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
-        ]
-      }
+          {
+            src: '/pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/pwa-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module',
+      },
+      workbox: {
+        cleanupOutdatedCaches: true,
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
+        navigateFallback: '/index.html',
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'google-fonts-stylesheets',
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-webfonts',
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 60 * 24 * 365,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: ({ request }) => request.destination === 'image',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'vitara-images',
+              expiration: {
+                maxEntries: 80,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: ({ url, request }) =>
+              request.method === 'GET' &&
+              Boolean(apiOrigin) &&
+              url.origin === apiOrigin,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'vitara-api',
+              networkTimeoutSeconds: 8,
+              expiration: {
+                maxEntries: 80,
+                maxAgeSeconds: 60 * 5,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: ({ url }) =>
+              Boolean(supabaseOrigin) &&
+              url.origin === supabaseOrigin &&
+              url.pathname.startsWith('/auth/v1'),
+            handler: 'NetworkOnly',
+            options: {
+              cacheName: 'supabase-auth-network-only',
+            },
+          },
+          {
+            urlPattern: ({ url, request }) =>
+              request.method === 'GET' &&
+              Boolean(supabaseOrigin) &&
+              url.origin === supabaseOrigin &&
+              url.pathname.startsWith('/storage/v1/object/public'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'supabase-public-storage',
+              expiration: {
+                maxEntries: 80,
+                maxAgeSeconds: 60 * 60 * 24 * 7,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
+      },
     })
   ],
   build: {
@@ -39,4 +156,5 @@ export default defineConfig({
       },
     },
   },
+  };
 });

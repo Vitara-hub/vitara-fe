@@ -52,36 +52,11 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
       return;
     }
 
-    let isMounted = true;
-
-    const fetchChatHistory = async () => {
-      setIsInitialLoading(true);
-
-      try {
-        const response = await vitaraApi.getChatHistory(user?.name || 'anonymous_user');
-        if (!isMounted) return;
-
-        const nextMessages = response.messages.length ? response.messages : [getGreetingMessage(veeHealth)];
-        setMessages(nextMessages);
-        setChatMessages(nextMessages);
-      } catch (error) {
-        console.warn('Chat history unavailable. Using local greeting.', error);
-        if (!isMounted) return;
-
-        const fallbackMessages = chatMessages.data || [getGreetingMessage(veeHealth)];
-        setMessages(fallbackMessages);
-        setChatMessages(fallbackMessages);
-      } finally {
-        if (isMounted) setIsInitialLoading(false);
-      }
-    };
-
-    fetchChatHistory();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [chatMessages.data, chatMessages.fetchedAt, hasFreshCache, setChatMessages, user, veeHealth]);
+    const fallbackMessages = chatMessages.data || [getGreetingMessage(veeHealth)];
+    setMessages(fallbackMessages);
+    setChatMessages(fallbackMessages);
+    setIsInitialLoading(false);
+  }, [chatMessages.data, hasFreshCache, setChatMessages, veeHealth]);
 
   useEffect(() => { 
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); 

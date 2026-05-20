@@ -1,83 +1,87 @@
 // src/services/api.ts
-import axios from 'axios';
-import { 
-  JournalRequest, 
-  JournalResponse, 
-  SleepRequest, 
-  SleepResponse, 
-  ChatRequest, 
-  ChatHistoryResponse,
-  ChatResponse, 
-  HealthScoreRequest, 
-  HealthScoreResponse, 
-  ActivityDataResponse,
-  TypingRequest, 
-  TypingResponse 
+import axios, { AxiosError } from 'axios';
+import type {
+  ApiErrorResponse,
+  ChatRequest,
+  ChatResponse,
+  FoodResponse,
+  HealthScoreRequest,
+  HealthScoreResponse,
+  JournalRequest,
+  JournalResponse,
+  SleepRequest,
+  SleepResponse,
+  TypingRequest,
+  TypingResponse,
 } from '@/types/api';
 
-// Terapkan Fallback: Jika di .env tidak ada, gunakan localhost sebagai cadangan aman
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// Validasi Keamanan: Beri peringatan keras jika lupa set URL saat di-build untuk Production
 if (!import.meta.env.VITE_API_URL && import.meta.env.PROD) {
-  console.error("🚨 FATAL ERROR: VITE_API_URL belum dikonfigurasi di Environment Variables Production!");
+  console.error('FATAL ERROR: VITE_API_URL is not configured for production builds.');
 }
 
 const apiClient = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 10000, 
+  timeout: 10000,
 });
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  (error: AxiosError<ApiErrorResponse>) => {
     if (!error.response) {
-      console.error('🚨 Network/CORS Error: Tidak dapat terhubung ke server Vitara.');
+      console.error('Network/CORS Error: Unable to reach the Vitara API.');
     } else if (error.response.status >= 500) {
-      console.error('🚨 Server Error: Backend Python sedang bermasalah.');
+      console.error('Server Error: Vitara API returned a server-side failure.');
     }
+
     return Promise.reject(error);
   }
 );
 
+function toFoodFormData(imageOrFormData: File | FormData): FormData {
+  if (imageOrFormData instanceof FormData) return imageOrFormData;
+
+  const formData = new FormData();
+  formData.append('image', imageOrFormData);
+  return formData;
+}
+
 export const vitaraApi = {
   predictJournal: async (data: JournalRequest): Promise<JournalResponse> => {
-    const response = await apiClient.post('/predict/journal', data);
+    const response = await apiClient.post<JournalResponse>('/predict/journal', data);
     return response.data;
   },
-  predictFood: async (formData: FormData): Promise<any> => {
-    const response = await apiClient.post('/predict/food', formData, {
+
+  predictFood: async (imageOrFormData: File | FormData): Promise<FoodResponse> => {
+    const response = await apiClient.post<FoodResponse>('/predict/food', toFoodFormData(imageOrFormData), {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },
+
   predictSleep: async (data: SleepRequest): Promise<SleepResponse> => {
-    const response = await apiClient.post('/predict/sleep', data);
+    const response = await apiClient.post<SleepResponse>('/predict/sleep', data);
     return response.data;
   },
+
   predictTyping: async (data: TypingRequest): Promise<TypingResponse> => {
-    const response = await apiClient.post('/predict/typing', data);
+    const response = await apiClient.post<TypingResponse>('/predict/typing', data);
     return response.data;
   },
-  sendChatMessage: async (data: ChatRequest): Promise<ChatResponse> => {
-    const response = await apiClient.post('/chat', data);
+
+  calculateHealthScore: async (data: HealthScoreRequest): Promise<HealthScoreResponse> => {
+    const response = await apiClient.post<HealthScoreResponse>('/health/score', data);
     return response.data;
   },
-  getChatHistory: async (userId: string): Promise<ChatHistoryResponse> => {
-    const response = await apiClient.get('/chat/history', {
-      params: { user_id: userId },
-    });
-    return response.data;
-  },
+
   getHealthScore: async (data: HealthScoreRequest): Promise<HealthScoreResponse> => {
-    const response = await apiClient.post('/health/score', data);
+    return vitaraApi.calculateHealthScore(data);
+  },
+
+  sendChatMessage: async (data: ChatRequest): Promise<ChatResponse> => {
+    const response = await apiClient.post<ChatResponse>('/companion/chat', data);
     return response.data;
   },
-  getActivityData: async (userId: string): Promise<ActivityDataResponse> => {
-    const response = await apiClient.get('/activity/summary', {
-      params: { user_id: userId },
-    });
-    return response.data;
-  }
 };

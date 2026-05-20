@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, CloudOff } from 'lucide-react';
 import useStore, { ActivityLog } from '@/store/useStore';
-import { vitaraApi } from '@/services/api';
 import ActivityChart from '@/components/activity/ActivityChart';
 import RecentHistory from '@/components/activity/RecentHistory';
 import Skeleton from '@/components/ui/Skeleton';
@@ -149,9 +148,7 @@ export default function ActivityPage() {
   const {
     veeHealth,
     veeWeight,
-    user,
     activityHistory,
-    setServerDown,
     activityData: cachedActivityData,
     setActivityData,
   } = useStore();
@@ -168,46 +165,12 @@ export default function ActivityPage() {
       return;
     }
 
-    let isMounted = true;
-
-    const fetchActivityData = async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      try {
-        const data = await vitaraApi.getActivityData(user?.name || 'Yunggi');
-        if (!isMounted) return;
-
-        setActivityData({
-          ...data,
-          chart: data.chart.length ? data.chart : buildEmptyChart(),
-        });
-        setServerDown(false);
-      } catch (error) {
-        console.warn('Activity API Offline. Using local activity history.', error);
-        if (!isMounted) return;
-
-        setActivityData(localActivityData);
-        setErrorMessage('Data aktivitas server belum tersedia. Menampilkan riwayat lokal dari perangkat ini.');
-        setServerDown(true);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    fetchActivityData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [
-    cachedActivityData.fetchedAt,
-    hasFreshCache,
-    localActivityData,
-    setActivityData,
-    setServerDown,
-    user,
-  ]);
+    setIsLoading(true);
+    setErrorMessage(null);
+    setActivityData(localActivityData);
+    setErrorMessage('Menampilkan riwayat lokal dari perangkat ini.');
+    setIsLoading(false);
+  }, [cachedActivityData.fetchedAt, hasFreshCache, localActivityData, setActivityData]);
   
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-6 space-y-6 bg-[#FAF9F6] dark:bg-[#121413]">

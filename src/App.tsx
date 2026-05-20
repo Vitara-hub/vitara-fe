@@ -7,6 +7,7 @@ import useHardwareEcoMode from '@/hooks/useHardwareEcoMode';
 import BottomNav from '@/components/layout/BottomNav';
 import Sidebar from '@/components/layout/Sidebar';
 import SplashScreen from '@/components/layout/SplashScreen';
+import PWABadge from '@/components/ui/PWABadge';
 import Skeleton from '@/components/ui/Skeleton';
 
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
@@ -159,6 +160,7 @@ export default function App() {
   return (
     <>
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} isEcoMode={isEcoMode} />}
+      <PWABadge />
 
       <div className={`h-[100dvh] w-full flex flex-col overflow-hidden`}>
         <div className="flex-1 flex w-full min-h-0 bg-[#FAF9F6] dark:bg-[#121413] transition-colors duration-300 font-sans text-[#2B4B3D] dark:text-stone-100 overflow-hidden">
