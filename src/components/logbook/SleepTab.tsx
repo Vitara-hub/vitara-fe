@@ -118,7 +118,7 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
                 <button onClick={() => setInterruptions(interruptions + 1)} className="w-10 h-10 rounded-[16px] bg-white dark:bg-stone-800 shadow-sm flex justify-center items-center hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors active:scale-95"><Plus size={18} strokeWidth={3} className="text-[#244135] dark:text-stone-100" /></button>
             </div>
           </div>
-          <button onClick={handleSaveSleep} className="w-full py-4 mt-6 rounded-[22px] bg-[#244135] dark:bg-[#8CE0A7] text-white dark:text-[#121413] font-black text-sm shadow-[0_8px_24px_rgba(36,65,53,0.15)] hover:scale-[1.02] active:scale-95 transition-all">
+          <button onClick={() => { void handleSaveSleep(); }} className="w-full py-4 mt-6 rounded-[22px] bg-[#244135] dark:bg-[#8CE0A7] text-white dark:text-[#121413] font-black text-sm shadow-[0_8px_24px_rgba(36,65,53,0.15)] hover:scale-[1.02] active:scale-95 transition-all">
             Kalkulasi Pemulihan
           </button>
         </div>

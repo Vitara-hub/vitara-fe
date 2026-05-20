@@ -24,6 +24,7 @@ export interface VeePhysicsReturn {
 export default function useVeePhysics(): VeePhysicsReturn {
   const veeRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0); // requestAnimationFrame returns number
+  const shadowRef = useRef<HTMLDivElement | null>(null);
 
   // State Interaksi & Easter Eggs
   const [eyePosition, setEyePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -91,6 +92,8 @@ export default function useVeePhysics(): VeePhysicsReturn {
     };
     veeDir.current = -1;
 
+    shadowRef.current = veeRef.current?.querySelector<HTMLDivElement>('.absolute.-bottom-1.h-3') ?? null;
+
     const updatePhysics = () => {
       if (!veeRef.current) return;
       const vW = window.innerWidth > 768 ? 240 : 160;
@@ -129,7 +132,7 @@ export default function useVeePhysics(): VeePhysicsReturn {
       const targetRot = (currentGravity < 0 && !isDragging.current && !isMagnetized.current) ? 180 : 0;
       veeRot.current += (targetRot - veeRot.current) * 0.1;
 
-      const shadowEl = veeRef.current.querySelector<HTMLDivElement>('.absolute.-bottom-1.h-3');
+      const shadowEl = shadowRef.current;
       if (shadowEl) {
         const altitude = Math.max(0, maxY - veePos.current.y);
         const isAtCeiling = currentGravity < 0;

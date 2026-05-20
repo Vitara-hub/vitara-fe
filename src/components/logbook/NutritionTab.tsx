@@ -1,5 +1,5 @@
 // src/components/logbook/NutritionTab.tsx
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { Camera, ScanLine, Flame, Droplet, Wheat, Zap } from 'lucide-react';
 import VeeMascot from '@/components/mascot/VeeMascot';
 import { vitaraApi } from '@/services/api';
@@ -34,6 +34,12 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addLog, updateMetric } = useStore();
 
+  const mealTimeRef = useRef<string>(mealTime);
+
+  useEffect(() => {
+    mealTimeRef.current = mealTime;
+  }, [mealTime]);
+
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -52,7 +58,7 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
 
       setResult({
         name: apiResult.foods.length > 0 ? apiResult.foods.join(', ') : 'Makanan Tidak Dikenali',
-        tags: ["Makanan AI Terdeteksi", mealTime],
+        tags: ['Makanan AI Terdeteksi', mealTimeRef.current],
         calories: apiResult.estimated_calories,
         macros: { protein: Math.round(apiResult.estimated_calories * 0.05), carbs: Math.round(apiResult.estimated_calories * 0.12), fat: Math.round(apiResult.estimated_calories * 0.03) }
       });
@@ -103,7 +109,7 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
         ))}
       </div>
 
-      <input type="file" accept="image/jpeg, image/png" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+      <input type="file" accept="image/jpeg, image/png" ref={fileInputRef} onChange={(e) => { void handleFileChange(e); }} className="hidden" />
 
       {!file ? (
         <div onClick={() => fileInputRef.current?.click()} className="bg-white dark:bg-[#1A1D1B] border-2 border-dashed border-[#D1D9D5] dark:border-stone-700 rounded-[28px] p-8 flex flex-col items-center justify-center text-center cursor-pointer min-h-[300px] shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:bg-[#F4F6F5] dark:hover:bg-stone-800/50 transition-all duration-300 group relative">
