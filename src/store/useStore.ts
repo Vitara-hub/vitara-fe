@@ -1,7 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User } from '@supabase/supabase-js';
-import { isSupabaseConfigured, supabase } from '@/services/supabase';
+import {
+  clearAuthTokens,
+  getOAuthCode,
+  getOAuthHashTokens,
+  hasAuthTokens,
+  hasOAuthCallbackParams,
+  removeOAuthParamsFromUrl,
+  setAuthTokens,
+} from '@/services/authSession';
+import { isApiConfigured, vitaraApi } from '@/services/api';
+import type { AuthMeResponse, AuthTokensResponse } from '@/types/api';
 import type { ActivityDataResponse, ChatHistoryMessage, HealthScoreResponse } from '@/types/api';
 
 export interface BaseActivityLog { 
@@ -44,54 +53,58 @@ export interface AuthUser {
   name: string;
 }
 
-function mapSupabaseUser(user: User): AuthUser {
-  const metadata = user.user_metadata ?? {};
-  const displayName = metadata.full_name || metadata.name || user.email || 'Vitara User';
-  const photoURL = metadata.avatar_url || metadata.picture || '';
+function mapProfileUser(profile: AuthMeResponse): AuthUser {
+  const displayName =
+    profile.fullName?.trim() ||
+    profile.username?.trim() ||
+    profile.email?.trim() ||
+    'Vitara User';
 
   return {
-    uid: user.id,
-    email: user.email || '',
+    uid: profile.id,
+    email: profile.email || '',
     displayName,
-    photoURL,
+    photoURL: '',
     name: displayName,
   };
 }
 
-function hasSupabaseAuthCallback() {
-  const searchParams = new URLSearchParams(window.location.search);
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-
-  return (
-    searchParams.has('code') ||
-    searchParams.has('error') ||
-    hashParams.has('access_token') ||
-    hashParams.has('refresh_token') ||
-    hashParams.has('error')
-  );
+async function bootstrapBackendProfile() {
+  try {
+    await vitaraApi.bootstrapProfile();
+  } catch (error) {
+    console.warn('Failed to bootstrap backend profile.', error);
+  }
 }
 
-function getSupabaseHashSession() {
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-  const accessToken = hashParams.get('access_token');
-  const refreshToken = hashParams.get('refresh_token');
-
-  if (!accessToken || !refreshToken) return null;
-
-  return {
-    access_token: accessToken,
-    refresh_token: refreshToken,
-  };
-}
-
-function removeSupabaseAuthParamsFromUrl() {
-  if (!hasSupabaseAuthCallback()) return;
-
-  window.history.replaceState({}, document.title, window.location.pathname);
+async function applyAuthTokens(tokens: AuthTokensResponse): Promise<AuthUser> {
+  setAuthTokens(tokens);
+  const profile = await vitaraApi.getMe();
+  await bootstrapBackendProfile();
+  return mapProfileUser(profile);
 }
 
 export function getFriendlyAuthError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error || '');
+  const responseData =
+    error &&
+    typeof error === 'object' &&
+    'response' in error &&
+    error.response &&
+    typeof error.response === 'object' &&
+    'data' in error.response &&
+    error.response.data &&
+    typeof error.response.data === 'object'
+      ? (error.response.data as Record<string, unknown>)
+      : null;
+  const responseMessage =
+    typeof responseData?.message === 'string'
+      ? responseData.message
+      : typeof responseData?.detail === 'string'
+        ? responseData.detail
+        : '';
+  const message =
+    responseMessage ||
+    (error instanceof Error ? error.message : typeof error === 'string' ? error : '');
   const lowerMessage = message.toLowerCase();
 
   if (
@@ -136,9 +149,10 @@ interface StoreState {
   isAuthLoading: boolean;
   user: AuthUser | null;
   login: (user: AuthUser) => void;
+  establishSession: (tokens: AuthTokensResponse) => Promise<AuthUser>;
   logout: () => Promise<void>;
   setAuthUser: (user: AuthUser | null) => void;
-  initAuth: () => Promise<() => void>;
+  initAuth: () => Promise<void>;
 
   isDarkMode: boolean;
   toggleDarkMode: () => void;
@@ -161,7 +175,6 @@ interface StoreState {
   setChatMessages: (data: ChatHistoryMessage[] | null) => void;
   clearCachedPageData: () => void;
 
-  // 🚀 STATE BARU BUAT SERVER DOWN
   isServerDown: boolean;
   setServerDown: (status: boolean) => void;
 }
@@ -173,103 +186,67 @@ const useStore = create<StoreState>()(
       isAuthLoading: true,
       user: null,
       login: (user) => set({ isAuthenticated: true, isAuthLoading: false, user }),
+      establishSession: async (tokens) => {
+        const user = await applyAuthTokens(tokens);
+        set({ isAuthenticated: true, isAuthLoading: false, user });
+        return user;
+      },
       logout: async () => {
-        if (isSupabaseConfigured) await supabase.auth.signOut();
+        if (hasAuthTokens()) {
+          try {
+            await vitaraApi.logout();
+          } catch (error) {
+            console.warn('Backend logout failed; signing out locally.', error);
+          }
+        }
+        clearAuthTokens();
         set({ isAuthenticated: false, isAuthLoading: false, user: null });
       },
       setAuthUser: (user) => set({ isAuthenticated: Boolean(user), isAuthLoading: false, user }),
       initAuth: async () => {
         set({ isAuthLoading: true });
 
-        if (!isSupabaseConfigured) {
+        if (!isApiConfigured) {
           set({ isAuthenticated: false, isAuthLoading: false, user: null });
-          return () => {};
+          return;
         }
 
-        const isOAuthCallback = hasSupabaseAuthCallback();
+        try {
+          const code = getOAuthCode();
+          const hashTokens = getOAuthHashTokens();
 
-        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-          if (session?.user) {
-            set({
-              isAuthenticated: true,
-              isAuthLoading: false,
-              user: mapSupabaseUser(session.user),
-            });
-            removeSupabaseAuthParamsFromUrl();
+          if (code) {
+            const tokens = await vitaraApi.completeGoogleCallback({ code });
+            const user = await applyAuthTokens(tokens);
+            removeOAuthParamsFromUrl();
+            set({ isAuthenticated: true, isAuthLoading: false, user });
             return;
           }
 
-          if (!isOAuthCallback || event === 'SIGNED_OUT') {
-            set({
-              isAuthenticated: false,
-              isAuthLoading: false,
-              user: null,
-            });
-          }
-        });
-
-        try {
-          const code = new URLSearchParams(window.location.search).get('code');
-          const hashSession = getSupabaseHashSession();
-
-          if (code) {
-            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-            if (error) throw error;
-
-            set({
-              isAuthenticated: Boolean(data.session?.user),
-              isAuthLoading: false,
-              user: data.session?.user ? mapSupabaseUser(data.session.user) : null,
-            });
-            removeSupabaseAuthParamsFromUrl();
-            return () => listener.subscription.unsubscribe();
+          if (hashTokens) {
+            const tokens = await vitaraApi.completeGoogleCallback(hashTokens);
+            const user = await applyAuthTokens(tokens);
+            removeOAuthParamsFromUrl();
+            set({ isAuthenticated: true, isAuthLoading: false, user });
+            return;
           }
 
-          if (hashSession) {
-            const { data, error } = await supabase.auth.setSession(hashSession);
-            if (error) throw error;
-
-            set({
-              isAuthenticated: Boolean(data.session?.user),
-              isAuthLoading: false,
-              user: data.session?.user ? mapSupabaseUser(data.session.user) : null,
-            });
-            removeSupabaseAuthParamsFromUrl();
-            return () => listener.subscription.unsubscribe();
-          }
-
-          const { data, error } = await supabase.auth.getSession();
-          if (error) throw error;
-
-          if (data.session?.user) {
+          if (hasAuthTokens()) {
+            const profile = await vitaraApi.getMe();
             set({
               isAuthenticated: true,
               isAuthLoading: false,
-              user: mapSupabaseUser(data.session.user),
+              user: mapProfileUser(profile),
             });
-            removeSupabaseAuthParamsFromUrl();
-          } else if (!isOAuthCallback) {
-            set({
-              isAuthenticated: false,
-              isAuthLoading: false,
-              user: null,
-            });
-          } else {
-            window.setTimeout(async () => {
-              const { data: retryData } = await supabase.auth.getSession();
-              set({
-                isAuthenticated: Boolean(retryData.session?.user),
-                isAuthLoading: false,
-                user: retryData.session?.user ? mapSupabaseUser(retryData.session.user) : null,
-              });
-              if (retryData.session?.user) removeSupabaseAuthParamsFromUrl();
-            }, 1200);
+            if (hasOAuthCallbackParams()) removeOAuthParamsFromUrl();
+            return;
           }
+
+          set({ isAuthenticated: false, isAuthLoading: false, user: null });
         } catch {
+          clearAuthTokens();
           set({ isAuthenticated: false, isAuthLoading: false, user: null });
         }
-
-        return () => listener.subscription.unsubscribe();
       },
       
       isDarkMode: false, 
@@ -287,7 +264,7 @@ const useStore = create<StoreState>()(
         const newLog = { 
           id: Date.now(), 
           timestamp: new Date().toISOString(), 
-          syncStatus: 'pending', // Default pending saat offline
+          syncStatus: 'pending',
           ...log 
         } as ActivityLog;
         return { activityHistory: [newLog, ...state.activityHistory] };
@@ -316,15 +293,12 @@ const useStore = create<StoreState>()(
         chatMessages: { data: null, fetchedAt: null },
       }),
 
-      // 🚀 INISIALISASI STATE
       isServerDown: false,
       setServerDown: (status) => set({ isServerDown: status }),
     }),
     {
       name: 'vitara-storage',
       partialize: (state) => ({
-        isAuthenticated: state.isAuthenticated,
-        user: state.user,
         isDarkMode: state.isDarkMode,
         veeHealth: state.veeHealth,
         veeWeight: state.veeWeight,

@@ -19,10 +19,9 @@ function isFresh(fetchedAt: number | null, ttl = DASHBOARD_CACHE_TTL) {
 
 export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardPageProps) {
   const {
+    user,
     veeHealth,
     veeWeight,
-    user,
-    latestMetrics,
     setVeeState,
     dashboardHealthScore,
     setDashboardHealthScore,
@@ -44,15 +43,7 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
       setIsSyncing(true);
 
       try {
-        const payload = {
-          user_id: user?.name || 'Yunggi',
-          nlp_result: latestMetrics.nlp || { emotion: 'neutral', stress_level: 0.2 },
-          food_result: latestMetrics.food || { estimated_calories: 2000 },
-          sleep_result: latestMetrics.sleep || { quality_score: 80 },
-          typing_result: latestMetrics.typing || { stress_score: 0.1 },
-        };
-
-        const response = await vitaraApi.getHealthScore(payload);
+        const response = await vitaraApi.computeHealth();
         if (!isMounted) return;
 
         setDashboardHealthScore(response);
@@ -76,10 +67,8 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
     dashboardHealthScore.fetchedAt,
     hasFreshCache,
     healthScoreData,
-    latestMetrics,
     setDashboardHealthScore,
     setVeeState,
-    user,
     veeWeight,
   ]);
 

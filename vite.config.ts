@@ -7,7 +7,6 @@ import path from 'path';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const apiOrigin = env.VITE_API_URL ? new URL(env.VITE_API_URL).origin : '';
-  const supabaseOrigin = env.VITE_SUPABASE_URL ? new URL(env.VITE_SUPABASE_URL).origin : '';
 
   return {
   resolve: {
@@ -109,34 +108,6 @@ export default defineConfig(({ mode }) => {
               expiration: {
                 maxEntries: 80,
                 maxAgeSeconds: 60 * 5,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            urlPattern: ({ url }) =>
-              Boolean(supabaseOrigin) &&
-              url.origin === supabaseOrigin &&
-              url.pathname.startsWith('/auth/v1'),
-            handler: 'NetworkOnly',
-            options: {
-              cacheName: 'supabase-auth-network-only',
-            },
-          },
-          {
-            urlPattern: ({ url, request }) =>
-              request.method === 'GET' &&
-              Boolean(supabaseOrigin) &&
-              url.origin === supabaseOrigin &&
-              url.pathname.startsWith('/storage/v1/object/public'),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'supabase-public-storage',
-              expiration: {
-                maxEntries: 80,
-                maxAgeSeconds: 60 * 60 * 24 * 7,
               },
               cacheableResponse: {
                 statuses: [0, 200],

@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, CloudOff } from 'lucide-react';
 import useStore, { ActivityLog } from '@/store/useStore';
+import { vitaraApi } from '@/services/api';
 import ActivityChart from '@/components/activity/ActivityChart';
 import RecentHistory from '@/components/activity/RecentHistory';
 import Skeleton from '@/components/ui/Skeleton';
@@ -165,11 +166,31 @@ export default function ActivityPage() {
       return;
     }
 
-    setIsLoading(true);
-    setErrorMessage(null);
-    setActivityData(localActivityData);
-    setErrorMessage('Menampilkan riwayat lokal dari perangkat ini.');
-    setIsLoading(false);
+    let isMounted = true;
+
+    const loadActivity = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const remoteData = await vitaraApi.getActivityFeed('7d');
+        if (!isMounted) return;
+        setActivityData(remoteData);
+      } catch (error) {
+        console.warn('Activity API Offline, showing local fallback.', error);
+        if (!isMounted) return;
+        setActivityData(localActivityData);
+        setErrorMessage('Menampilkan riwayat lokal dari perangkat ini.');
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    void loadActivity();
+
+    return () => {
+      isMounted = false;
+    };
   }, [cachedActivityData.fetchedAt, hasFreshCache, localActivityData, setActivityData]);
   
   return (

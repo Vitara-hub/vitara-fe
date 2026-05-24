@@ -29,7 +29,6 @@ function getGreetingMessage(veeHealth: VeeHealthStatus): ChatMessage {
 
 export default function ChatPage({ veeHealth }: ChatPageProps) {
   const {
-    user,
     addLog,
     setVeeState,
     veeWeight,
@@ -52,10 +51,41 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
       return;
     }
 
-    const fallbackMessages = chatMessages.data || [getGreetingMessage(veeHealth)];
-    setMessages(fallbackMessages);
-    setChatMessages(fallbackMessages);
-    setIsInitialLoading(false);
+    let isMounted = true;
+
+    const loadHistory = async () => {
+      setIsInitialLoading(true);
+      try {
+        const { messages: history } = await vitaraApi.loadChatHistory();
+        if (!isMounted) return;
+
+        const mapped: ChatMessage[] =
+          history.length > 0
+            ? history.map((item, index) => ({
+                id: Number(item.id) || Date.now() + index,
+                role: item.role === 'assistant' ? 'ai' : 'user',
+                text: item.content,
+              }))
+            : [getGreetingMessage(veeHealth)];
+
+        setMessages(mapped);
+        setChatMessages(mapped);
+      } catch (error) {
+        console.warn('Chat history unavailable, using local cache.', error);
+        if (!isMounted) return;
+        const fallbackMessages = chatMessages.data || [getGreetingMessage(veeHealth)];
+        setMessages(fallbackMessages);
+        setChatMessages(fallbackMessages);
+      } finally {
+        if (isMounted) setIsInitialLoading(false);
+      }
+    };
+
+    void loadHistory();
+
+    return () => {
+      isMounted = false;
+    };
   }, [chatMessages.data, hasFreshCache, setChatMessages, veeHealth]);
 
   useEffect(() => { 
@@ -80,7 +110,6 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
 
     try {
       const response = await vitaraApi.sendChatMessage({
-        user_id: user?.name || 'anonymous_user',
         message: textToSubmit
       });
 

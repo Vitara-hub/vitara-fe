@@ -3,7 +3,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { ArrowRight, Lock, Mail, User } from 'lucide-react';
 import VitaraLogo from '@/components/ui/VitaraLogo';
 import PopupAlert, { PopupState } from '@/components/ui/PopupAlert';
-import { isSupabaseConfigured, supabase } from '@/services/supabase';
+import { isApiConfigured, vitaraApi } from '@/services/api';
 import useStore, { getFriendlyAuthError } from '@/store/useStore';
 
 interface LoginPageProps {
@@ -26,8 +26,15 @@ const initialPopup: PopupState = {
   type: 'info',
 };
 
+function createUsernameFromEmail(email: string) {
+  const localPart = email.split('@')[0] || 'user';
+  const normalized = localPart.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 24);
+  const safeBase = normalized.length >= 3 ? normalized : `${normalized}_user`;
+  return `${safeBase}_${Math.floor(Math.random() * 10000)}`.slice(0, 30);
+}
+
 export default function LoginPage({ onLogin }: LoginPageProps) {
-  const { user, isAuthLoading } = useStore();
+  const { user, isAuthLoading, establishSession } = useStore();
   const [isLoginView, setIsLoginView] = useState<boolean>(true);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string>('');
@@ -60,7 +67,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     const errorDescription = params.get('error_description') || params.get('error');
 
     if (errorDescription) {
-      showPopup('error', 'Login Google gagal', getFriendlyAuthError(decodeURIComponent(errorDescription).replace(/\+/g, ' ')));
+      window.setTimeout(() => {
+        showPopup('error', 'Login Google gagal', getFriendlyAuthError(decodeURIComponent(errorDescription).replace(/\+/g, ' ')));
+      }, 0);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -68,8 +77,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const handleEmailAuth = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!isSupabaseConfigured) {
-      showPopup('error', 'Login belum tersedia', 'Layanan login sedang disiapkan. Silakan coba lagi nanti.');
+    if (!isApiConfigured) {
+      showPopup('error', 'Login belum tersedia', 'Backend API belum dikonfigurasi. Set VITE_API_URL lalu coba lagi.');
       return;
     }
 
@@ -81,38 +90,22 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setIsEmailLoading(true);
 
     try {
-      if (isLoginView) {
-        const { data, error } = await supabase.auth.signInWithPassword({
+      if (!isLoginView) {
+        await vitaraApi.signup({
+          username: createUsernameFromEmail(email.trim()),
+          fullName: fullName.trim() || email.trim(),
           email: email.trim(),
           password,
         });
-
-        if (error) throw error;
-        if (data.session) onLogin?.();
-      } else {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              full_name: fullName.trim() || email.trim(),
-            },
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-          },
-        });
-
-        if (error) throw error;
-
-        if (data.session) {
-          onLogin?.();
-        } else {
-          showPopup(
-            'success',
-            'Cek email kamu',
-            'Akun berhasil dibuat. Buka link konfirmasi di email kamu sebelum masuk ke Vitara.'
-          );
-        }
       }
+
+      const tokens = await vitaraApi.login({
+        email: email.trim(),
+        password,
+      });
+
+      await establishSession(tokens);
+      onLogin?.();
     } catch (error) {
       showPopup('error', isLoginView ? 'Login gagal' : 'Daftar akun gagal', getFriendlyAuthError(error));
     } finally {
@@ -121,25 +114,17 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   const handleGoogleLogin = async () => {
-    if (!isSupabaseConfigured) {
-      showPopup('error', 'Login belum tersedia', 'Layanan login sedang disiapkan. Silakan coba lagi nanti.');
+    if (!isApiConfigured) {
+      showPopup('error', 'Login belum tersedia', 'Backend API belum dikonfigurasi. Set VITE_API_URL lalu coba lagi.');
       return;
     }
 
     setIsGoogleLoading(true);
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      },
-    });
-
-    if (error) {
+    try {
+      const authUrl = await vitaraApi.getGoogleAuthUrl();
+      window.location.assign(authUrl);
+    } catch (error) {
       setIsGoogleLoading(false);
       showPopup('error', 'Login Google gagal', getFriendlyAuthError(error));
     }
@@ -169,7 +154,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </p>
           </div>
 
-          <form onSubmit={handleEmailAuth} className="flex flex-col gap-4 relative z-10">
+          <form onSubmit={(e) => { void handleEmailAuth(e); }} className="flex flex-col gap-4 relative z-10">
             {!isLoginView && (
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8CAAB8] dark:text-stone-500 group-focus-within:text-[#1DB38A] dark:group-focus-within:text-[#8CE0A7] transition-colors">
@@ -250,7 +235,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
           <button
             type="button"
-            onClick={handleGoogleLogin}
+            onClick={() => { void handleGoogleLogin(); }}
             disabled={isAuthenticating}
             className="w-full relative z-10 flex items-center justify-center gap-3 bg-white dark:bg-stone-800 border border-[#E8F0EA] dark:border-stone-700 hover:border-[#1DB38A] dark:hover:border-[#8CE0A7] text-[#2B4B3D] dark:text-stone-200 font-bold text-[14px] py-3.5 rounded-[20px] transition-all duration-200 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1DB38A] disabled:opacity-70 disabled:cursor-not-allowed"
           >

@@ -57,20 +57,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
     let isMounted = true;
 
-    initAuth().then((unsubscribe) => {
-      if (!isMounted) {
-        unsubscribe();
-        return;
-      }
-      cleanup = unsubscribe;
+    void initAuth().then(() => {
+      if (!isMounted) return;
     });
 
     return () => {
       isMounted = false;
-      cleanup?.();
     };
   }, [initAuth]);
 
