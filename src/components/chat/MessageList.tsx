@@ -7,7 +7,6 @@ export type ChatMessage = ChatHistoryMessage;
 
 interface MessageListProps {
   messages: ChatMessage[];
-  isLoading: boolean;
   isInitialLoading?: boolean;
   bottomRef: RefObject<HTMLDivElement | null>;
 }
@@ -45,7 +44,7 @@ function ChatHistorySkeleton() {
   );
 }
 
-export default function MessageList({ messages, isLoading, isInitialLoading = false, bottomRef }: MessageListProps) {
+export default function MessageList({ messages, isInitialLoading = false, bottomRef }: MessageListProps) {
   // const hasStreamingAiBubble = messages.some((msg) => msg.role === 'ai' && msg.text.trim().length === 0);
 
   return (
@@ -82,17 +81,6 @@ export default function MessageList({ messages, isLoading, isInitialLoading = fa
           </div>
         ))
       )}
-      
-      {/* {!isInitialLoading && isLoading && !hasStreamingAiBubble && (
-        <div className="flex justify-start items-end gap-2">
-          <Skeleton className="w-8 h-8 rounded-full shrink-0" />
-          <div className="bg-white dark:bg-[#1A1D1B] rounded-[28px] rounded-bl-sm p-3.5 shadow-sm border border-[#E8F0EA] dark:border-stone-800 w-[70%] max-w-[300px] space-y-2">
-            <Skeleton className="h-3 w-11/12" />
-            <Skeleton className="h-3 w-2/3" />
-          </div>
-        </div>
-      )} */}
-
       <div ref={bottomRef} />
     </div>
   );
