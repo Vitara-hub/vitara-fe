@@ -26,12 +26,7 @@ const initialPopup: PopupState = {
   type: 'info',
 };
 
-function createUsernameFromEmail(email: string) {
-  const localPart = email.split('@')[0] || 'user';
-  const normalized = localPart.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 24);
-  const safeBase = normalized.length >= 3 ? normalized : `${normalized}_user`;
-  return `${safeBase}_${Math.floor(Math.random() * 10000)}`.slice(0, 30);
-}
+
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const { user, isAuthLoading, establishSession } = useStore();
@@ -92,8 +87,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     try {
       if (!isLoginView) {
         await vitaraApi.signup({
-          username: createUsernameFromEmail(email.trim()),
-          fullName: fullName.trim() || email.trim(),
+          fullName: fullName.trim() || undefined,
           email: email.trim(),
           password,
         });

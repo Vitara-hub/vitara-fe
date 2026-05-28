@@ -37,8 +37,8 @@ export type GoogleAuthCallbackRequest =
   | { accessToken: string; refreshToken: string };
 
 export interface SignupRequest {
-  username: string;
-  fullName: string;
+  username?: string;
+  fullName?: string;
   email: string;
   password: string;
 }
@@ -224,7 +224,7 @@ export interface ActivityDataResponse {
 }
 
 export interface ChatHistoryMessage {
-  id: number;
+  id: string;
   role: 'user' | 'ai';
   text: string;
   recommendations?: string[];

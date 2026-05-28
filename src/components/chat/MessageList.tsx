@@ -46,6 +46,8 @@ function ChatHistorySkeleton() {
 }
 
 export default function MessageList({ messages, isLoading, isInitialLoading = false, bottomRef }: MessageListProps) {
+  // const hasStreamingAiBubble = messages.some((msg) => msg.role === 'ai' && msg.text.trim().length === 0);
+
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-5 pb-[160px] no-scrollbar">
       {isInitialLoading ? (
@@ -53,13 +55,20 @@ export default function MessageList({ messages, isLoading, isInitialLoading = fa
       ) : (
         messages.map((msg) => (
           <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-            <div className={`max-w-[80%] p-3.5 text-[14px] font-medium leading-relaxed 
-              ${msg.role === 'user' 
-                ? 'bg-[#8CE0A7] text-[#1A3024] rounded-[24px] rounded-br-sm shadow-sm' 
-                : 'bg-white dark:bg-[#1A1D1B] text-[#2B4B3D] dark:text-stone-100 rounded-[28px] rounded-bl-sm rounded-tr-[32px] shadow-sm border border-[#E8F0EA] dark:border-stone-800' 
-              }`}>
-              {msg.text}
-            </div>
+            {msg.role === 'ai' && msg.text.trim().length === 0 ? (
+              <div className="max-w-[80%] w-[70%] p-3.5 space-y-2 shadow-sm border bg-white dark:bg-[#1A1D1B] border-[#E8F0EA] dark:border-stone-800 rounded-[28px] rounded-bl-sm rounded-tr-[32px]">
+                <Skeleton className="h-3 w-11/12 bg-[#E8F0EA] dark:bg-stone-800" />
+                <Skeleton className="h-3 w-2/3 bg-[#E8F0EA] dark:bg-stone-800" />
+              </div>
+            ) : (
+              <div className={`max-w-[80%] p-3.5 text-[14px] font-medium leading-relaxed 
+                ${msg.role === 'user' 
+                  ? 'bg-[#8CE0A7] text-[#1A3024] rounded-[24px] rounded-br-sm shadow-sm' 
+                  : 'bg-white dark:bg-[#1A1D1B] text-[#2B4B3D] dark:text-stone-100 rounded-[28px] rounded-bl-sm rounded-tr-[32px] shadow-sm border border-[#E8F0EA] dark:border-stone-800' 
+                }`}>
+                {msg.text}
+              </div>
+            )}
             
             {msg.role === 'ai' && msg.recommendations && msg.recommendations.length > 0 && (
               <div className="mt-2 ml-2 flex flex-col gap-1.5 max-w-[80%]">
@@ -74,7 +83,7 @@ export default function MessageList({ messages, isLoading, isInitialLoading = fa
         ))
       )}
       
-      {!isInitialLoading && isLoading && (
+      {/* {!isInitialLoading && isLoading && !hasStreamingAiBubble && (
         <div className="flex justify-start items-end gap-2">
           <Skeleton className="w-8 h-8 rounded-full shrink-0" />
           <div className="bg-white dark:bg-[#1A1D1B] rounded-[28px] rounded-bl-sm p-3.5 shadow-sm border border-[#E8F0EA] dark:border-stone-800 w-[70%] max-w-[300px] space-y-2">
@@ -82,7 +91,7 @@ export default function MessageList({ messages, isLoading, isInitialLoading = fa
             <Skeleton className="h-3 w-2/3" />
           </div>
         </div>
-      )}
+      )} */}
 
       <div ref={bottomRef} />
     </div>

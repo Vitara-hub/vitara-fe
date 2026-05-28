@@ -2,9 +2,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import {
   clearAuthTokens,
-  getAccessToken,
-  getRefreshToken,
-  isAccessTokenExpired,
   setAuthTokens,
 } from '@/services/authSession';
 import { mapActivityFeed } from '@/utils/activityMapper';
@@ -52,51 +49,28 @@ const apiClient = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
+  withCredentials: true,
 });
 
-let refreshPromise: Promise<void> | null = null;
 let chatSessionId: string | null = null;
 
 async function refreshAccessToken(): Promise<void> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    throw new Error('Missing refresh token');
-  }
-
+  // Rely on HttpOnly cookie for refresh token
   const response = await axios.post<ApiEnvelope<AuthTokensResponse>>(
     `${API_URL}/api/auth/refresh`,
-    { refreshToken },
-    { headers: { 'Content-Type': 'application/json' }, timeout: 10000 },
+    {},
+    { headers: { 'Content-Type': 'application/json' }, timeout: 10000, withCredentials: true },
   );
 
   setAuthTokens(unwrap(response.data));
 }
 
 export async function ensureValidAccessToken(): Promise<void> {
-  if (!getAccessToken()) return;
-  if (!isAccessTokenExpired()) return;
-
-  if (!refreshPromise) {
-    refreshPromise = refreshAccessToken().finally(() => {
-      refreshPromise = null;
-    });
-  }
-
-  await refreshPromise;
+  // Rely on HttpOnly cookies; if missing/expired, the interceptor will handle 401.
+  return Promise.resolve();
 }
 
 apiClient.interceptors.request.use(async (config) => {
-  try {
-    await ensureValidAccessToken();
-  } catch {
-    clearAuthTokens();
-  }
-
-  const token = getAccessToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
   return config;
 });
 
@@ -117,13 +91,10 @@ apiClient.interceptors.response.use(
 
       try {
         await refreshAccessToken();
-        const token = getAccessToken();
-        if (token) {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-        }
         return apiClient(originalRequest);
       } catch {
         clearAuthTokens();
+        // Redirect to login or reset state could go here
       }
     }
 
@@ -379,21 +350,58 @@ export const vitaraApi = {
     return unwrap(response.data).items;
   },
 
-  sendChatMessage: async (data: ChatRequest): Promise<ChatResponse> => {
+  sendChatMessage: async (data: ChatRequest, onChunk?: (text: string) => void): Promise<ChatResponse> => {
     const sessionId = data.sessionId ?? (await resolveChatSessionId());
 
-    const response = await apiClient.post<ApiEnvelope<{ assistantMessage: string }>>(
-      '/api/chat/messages',
-      {
+    const response = await fetch(`${API_URL}/api/chat/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
         sessionId,
         message: data.message,
-      },
-      { timeout: 90000 },
-    );
-    const result = unwrap(response.data);
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Chat API error: ${response.statusText}`);
+    }
+
+    if (!response.body) {
+      return { response: "", recommendations: [] };
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let fullText = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split("\n").filter((line) => line.startsWith("data:"));
+      for (const line of lines) {
+        const dataStr = line.slice(5).trim();
+        if (dataStr) {
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (parsed.token) {
+              fullText += parsed.token;
+              onChunk?.(fullText);
+            } else if (parsed.full_response) {
+              fullText = parsed.full_response;
+              onChunk?.(fullText);
+            }
+          } catch {}
+        }
+      }
+    }
 
     return {
-      response: result.assistantMessage,
+      response: fullText,
       recommendations: [],
     };
   },
