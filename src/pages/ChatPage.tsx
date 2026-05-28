@@ -164,7 +164,7 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
   return (
     <div className="flex-1 flex flex-col w-full relative bg-[#FAF9F6] dark:bg-[#121413] pb-28 md:pb-6 overflow-hidden">
       <ChatHeader veeHealth={veeHealth} isLoading={isSending || isInitialLoading} />
-      <MessageList messages={messages} isLoading={isSending} isInitialLoading={isInitialLoading} bottomRef={bottomRef} />
+      <MessageList messages={messages} isInitialLoading={isInitialLoading} bottomRef={bottomRef} />
       <ChatInput inputMessage={inputMessage} setInputMessage={setInputMessage} handleSend={handleSend} isLoading={isSending || isInitialLoading} />
     </div>
   );
