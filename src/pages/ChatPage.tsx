@@ -19,7 +19,7 @@ function isFresh(fetchedAt: number | null, ttl = CHAT_CACHE_TTL) {
 
 function getGreetingMessage(veeHealth: VeeHealthStatus): ChatMessage {
   return {
-    id: 1,
+    id: 'greeting',
     role: 'ai',
     text: veeHealth === 'tired'
       ? 'Halo... aku agak lemes nih karena kita kurang tidur. Kamu ngerasa capek juga nggak?'
@@ -27,9 +27,13 @@ function getGreetingMessage(veeHealth: VeeHealthStatus): ChatMessage {
   };
 }
 
+function createClientMessageId(prefix: string) {
+  const uuid = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Date.now());
+  return `${prefix}_${uuid}`;
+}
+
 export default function ChatPage({ veeHealth }: ChatPageProps) {
   const {
-    user,
     addLog,
     setVeeState,
     veeWeight,
@@ -52,10 +56,41 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
       return;
     }
 
-    const fallbackMessages = chatMessages.data || [getGreetingMessage(veeHealth)];
-    setMessages(fallbackMessages);
-    setChatMessages(fallbackMessages);
-    setIsInitialLoading(false);
+    let isMounted = true;
+
+    const loadHistory = async () => {
+      setIsInitialLoading(true);
+      try {
+        const { messages: history } = await vitaraApi.loadChatHistory();
+        if (!isMounted) return;
+
+        const mapped: ChatMessage[] =
+          history.length > 0
+            ? history.map((item, index) => ({
+                id: String(item.id || `remote_${index}`),
+                role: item.role === 'assistant' ? 'ai' : 'user',
+                text: item.content,
+              }))
+            : [getGreetingMessage(veeHealth)];
+
+        setMessages(mapped);
+        setChatMessages(mapped);
+      } catch (error) {
+        console.warn('Chat history unavailable, using local cache.', error);
+        if (!isMounted) return;
+        const fallbackMessages = chatMessages.data || [getGreetingMessage(veeHealth)];
+        setMessages(fallbackMessages);
+        setChatMessages(fallbackMessages);
+      } finally {
+        if (isMounted) setIsInitialLoading(false);
+      }
+    };
+
+    void loadHistory();
+
+    return () => {
+      isMounted = false;
+    };
   }, [chatMessages.data, hasFreshCache, setChatMessages, veeHealth]);
 
   useEffect(() => { 
@@ -74,22 +109,30 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
     const textToSubmit = inputMessage.trim();
     if (!textToSubmit || isSending || isInitialLoading) return;
     
-    updateMessages((prev) => [...prev, { id: Date.now(), role: 'user', text: textToSubmit }]);
+    updateMessages((prev) => [...prev, { id: createClientMessageId('user'), role: 'user', text: textToSubmit }]);
     setInputMessage(''); 
     setIsSending(true);
 
-    try {
-      const response = await vitaraApi.sendChatMessage({
-        user_id: user?.name || 'anonymous_user',
-        message: textToSubmit
-      });
+    const aiMessageId = createClientMessageId('ai');
+    updateMessages((prev) => [...prev, { id: aiMessageId, role: 'ai', text: '' }]);
 
-      updateMessages((prev) => [...prev, { 
-        id: Date.now() + 1, 
-        role: 'ai', 
-        text: response.response,
-        recommendations: response.recommendations 
-      }]);
+    try {
+      const response = await vitaraApi.sendChatMessage(
+        { message: textToSubmit },
+        (chunkText) => {
+          updateMessages((prev) =>
+            prev.map((m) => (m.id === aiMessageId ? { ...m, text: chunkText } : m))
+          );
+        }
+      );
+
+      updateMessages((prev) =>
+        prev.map((m) =>
+          m.id === aiMessageId
+            ? { ...m, text: response.response, recommendations: response.recommendations }
+            : m
+        )
+      );
 
       addLog({ type: 'chat', summary: `Ngobrol dengan Vee: "${textToSubmit.substring(0, 30)}..."`, syncStatus: 'synced' });
 
@@ -100,7 +143,7 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
       
       setTimeout(() => {
         updateMessages((prev) => [...prev, { 
-          id: Date.now() + 1, 
+          id: createClientMessageId('ai_fallback'),
           role: 'ai', 
           text: 'Sinyalku ke otak AI pusat lagi terputus nih... Pesanmu udah aku simpan, nanti kita bahas lagi kalau sinyalnya udah balik ya!',
           recommendations: ['Tunggu koneksi stabil']
