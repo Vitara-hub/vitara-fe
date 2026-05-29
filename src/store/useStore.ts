@@ -9,7 +9,7 @@ import {
   removeOAuthParamsFromUrl,
   setAuthTokens,
 } from '@/services/authSession';
-import { isApiConfigured, vitaraApi } from '@/services/api';
+import { isApiConfigured, resetChatSession, vitaraApi } from '@/services/api';
 import type { AuthMeResponse, AuthTokensResponse } from '@/types/api';
 import type { ActivityDataResponse, ChatHistoryMessage, HealthScoreResponse } from '@/types/api';
 
@@ -82,6 +82,24 @@ async function applyAuthTokens(tokens: AuthTokensResponse): Promise<AuthUser> {
   const profile = await vitaraApi.getMe();
   await bootstrapBackendProfile();
   return mapProfileUser(profile);
+}
+
+const emptyCacheEntry = { data: null, fetchedAt: null };
+
+function getLoggedOutState() {
+  return {
+    isAuthenticated: false,
+    isAuthLoading: false,
+    user: null,
+    activityHistory: [],
+    latestMetrics: { nlp: null, food: null, sleep: null, typing: null },
+    dashboardHealthScore: emptyCacheEntry,
+    activityData: emptyCacheEntry,
+    chatMessages: emptyCacheEntry,
+    veeHealth: 'fresh' as VeeHealthStatus,
+    veeWeight: 1,
+    isServerDown: false,
+  };
 }
 
 export function getFriendlyAuthError(error: unknown) {
@@ -192,15 +210,15 @@ const useStore = create<StoreState>()(
         return user;
       },
       logout: async () => {
-        if (hasAuthTokens()) {
-          try {
-            await vitaraApi.logout();
-          } catch (error) {
-            console.warn('Backend logout failed; signing out locally.', error);
-          }
+        try {
+          await vitaraApi.logout();
+        } catch (error) {
+          console.warn('Backend logout failed; signing out locally.', error);
         }
+
         clearAuthTokens();
-        set({ isAuthenticated: false, isAuthLoading: false, user: null });
+        resetChatSession();
+        set(getLoggedOutState());
       },
       setAuthUser: (user) => set({ isAuthenticated: Boolean(user), isAuthLoading: false, user }),
       initAuth: async () => {
@@ -288,9 +306,9 @@ const useStore = create<StoreState>()(
         chatMessages: { data, fetchedAt: data ? Date.now() : null },
       }),
       clearCachedPageData: () => set({
-        dashboardHealthScore: { data: null, fetchedAt: null },
-        activityData: { data: null, fetchedAt: null },
-        chatMessages: { data: null, fetchedAt: null },
+        dashboardHealthScore: { ...emptyCacheEntry },
+        activityData: { ...emptyCacheEntry },
+        chatMessages: { ...emptyCacheEntry },
       }),
 
       isServerDown: false,
