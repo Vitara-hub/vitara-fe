@@ -1,8 +1,9 @@
 // src/components/activity/ActivityChart.tsx
 import VeeMascot from '@/components/mascot/VeeMascot';
-import { VeeHealthStatus } from '@/store/useStore';
+import type { VeeHealthStatus } from '@/store/useStore';
 import Skeleton from '@/components/ui/Skeleton';
 import type { ActivityChartPoint } from '@/types/api';
+import type { VeeOverrideState } from '@/utils/veeLogic';
 
 interface ActivityChartProps {
   veeHealth: VeeHealthStatus;
@@ -11,6 +12,7 @@ interface ActivityChartProps {
   weeklyChangePercent: number;
   chartData: ActivityChartPoint[];
   isLoading?: boolean;
+  overrideState?: VeeOverrideState;
 }
 
 export default function ActivityChart({
@@ -20,6 +22,7 @@ export default function ActivityChart({
   weeklyChangePercent,
   chartData,
   isLoading = false,
+  overrideState,
 }: ActivityChartProps) {
   const weeklyChangeLabel = `${weeklyChangePercent >= 0 ? '+' : ''}${weeklyChangePercent}% dr minggu lalu`;
 
@@ -44,7 +47,7 @@ export default function ActivityChart({
         
         <div className="flex flex-col items-end gap-2">
           <div className="w-12 h-10 flex items-end justify-center mr-2">
-             {isLoading ? <Skeleton className="w-10 h-10 rounded-full" /> : <VeeMascot veeHealth={veeHealth} weight={veeWeight} scale={0.45} />}
+             {isLoading ? <Skeleton className="w-10 h-10 rounded-full" /> : <VeeMascot veeHealth={veeHealth} overrideState={overrideState} weight={veeWeight} scale={0.45} />}
           </div>
           {isLoading ? (
             <Skeleton className="h-6 w-28 rounded-lg" />

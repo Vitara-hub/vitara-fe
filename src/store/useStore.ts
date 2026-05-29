@@ -13,11 +13,11 @@ import { isApiConfigured, resetChatSession, vitaraApi } from '@/services/api';
 import type { AuthMeResponse, AuthTokensResponse } from '@/types/api';
 import type { ActivityDataResponse, ChatHistoryMessage, HealthScoreResponse } from '@/types/api';
 
-export interface BaseActivityLog {
-  id: number;
-  timestamp: string;
-  summary: string;
-  syncStatus?: 'synced' | 'pending';
+export interface BaseActivityLog { 
+  id: number; 
+  timestamp: string; 
+  summary: string; 
+  syncStatus?: 'synced' | 'pending'; 
 }
 
 export interface JournalLog extends BaseActivityLog { type: 'journal'; emotion?: string; stressLevel?: number; }
@@ -27,7 +27,7 @@ export interface ChatLog extends BaseActivityLog { type: 'chat'; }
 
 export type ActivityLog = JournalLog | FoodLog | SleepLog | ChatLog;
 
-export type NewActivityLog =
+export type NewActivityLog = 
   | Omit<JournalLog, 'id' | 'timestamp'>
   | Omit<FoodLog, 'id' | 'timestamp'>
   | Omit<SleepLog, 'id' | 'timestamp'>
@@ -84,7 +84,9 @@ async function applyAuthTokens(tokens: AuthTokensResponse): Promise<AuthUser> {
   return mapProfileUser(profile);
 }
 
-const emptyCacheEntry = { data: null, fetchedAt: null };
+function emptyCacheEntry<T>(): CacheEntry<T> {
+  return { data: null, fetchedAt: null };
+}
 
 function getLoggedOutState() {
   return {
@@ -93,9 +95,9 @@ function getLoggedOutState() {
     user: null,
     activityHistory: [],
     latestMetrics: { nlp: null, food: null, sleep: null, typing: null },
-    dashboardHealthScore: emptyCacheEntry,
-    activityData: emptyCacheEntry,
-    chatMessages: emptyCacheEntry,
+    dashboardHealthScore: emptyCacheEntry<HealthScoreResponse>(),
+    activityData: emptyCacheEntry<ActivityDataResponse>(),
+    chatMessages: emptyCacheEntry<ChatHistoryMessage[]>(),
     veeHealth: 'fresh' as VeeHealthStatus,
     veeWeight: 1,
     isServerDown: false,
@@ -105,13 +107,13 @@ function getLoggedOutState() {
 export function getFriendlyAuthError(error: unknown) {
   const responseData =
     error &&
-      typeof error === 'object' &&
-      'response' in error &&
-      error.response &&
-      typeof error.response === 'object' &&
-      'data' in error.response &&
-      error.response.data &&
-      typeof error.response.data === 'object'
+    typeof error === 'object' &&
+    'response' in error &&
+    error.response &&
+    typeof error.response === 'object' &&
+    'data' in error.response &&
+    error.response.data &&
+    typeof error.response.data === 'object'
       ? (error.response.data as Record<string, unknown>)
       : null;
   const responseMessage =
@@ -210,12 +212,13 @@ const useStore = create<StoreState>()(
         return user;
       },
       logout: async () => {
-        try {
-          await vitaraApi.logout();
-        } catch (error) {
-          console.warn('Backend logout failed; signing out locally.', error);
+        if (hasAuthTokens()) {
+          try {
+            await vitaraApi.logout();
+          } catch (error) {
+            console.warn('Backend logout failed; signing out locally.', error);
+          }
         }
-
         clearAuthTokens();
         resetChatSession();
         set(getLoggedOutState());
@@ -266,24 +269,24 @@ const useStore = create<StoreState>()(
           set({ isAuthenticated: false, isAuthLoading: false, user: null });
         }
       },
-
-      isDarkMode: false,
+      
+      isDarkMode: false, 
       toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
-
+      
       veeHealth: 'fresh',
       veeWeight: 1,
-      setVeeState: (health, weight) => set((state) => ({
-        veeHealth: health || state.veeHealth,
-        veeWeight: weight || state.veeWeight
+      setVeeState: (health, weight) => set((state) => ({ 
+        veeHealth: health || state.veeHealth, 
+        veeWeight: weight || state.veeWeight 
       })),
-
+      
       activityHistory: [],
       addLog: (log) => set((state) => {
-        const newLog = {
-          id: Date.now(),
-          timestamp: new Date().toISOString(),
+        const newLog = { 
+          id: Date.now(), 
+          timestamp: new Date().toISOString(), 
           syncStatus: 'pending',
-          ...log
+          ...log 
         } as ActivityLog;
         return { activityHistory: [newLog, ...state.activityHistory] };
       }),
@@ -306,9 +309,9 @@ const useStore = create<StoreState>()(
         chatMessages: { data, fetchedAt: data ? Date.now() : null },
       }),
       clearCachedPageData: () => set({
-        dashboardHealthScore: { ...emptyCacheEntry },
-        activityData: { ...emptyCacheEntry },
-        chatMessages: { ...emptyCacheEntry },
+        dashboardHealthScore: emptyCacheEntry<HealthScoreResponse>(),
+        activityData: emptyCacheEntry<ActivityDataResponse>(),
+        chatMessages: emptyCacheEntry<ChatHistoryMessage[]>(),
       }),
 
       isServerDown: false,
@@ -330,6 +333,5 @@ const useStore = create<StoreState>()(
     }
   )
 );
-
 
 export default useStore;

@@ -25,7 +25,7 @@ export default function FooterCTA({ onEnter }: FooterCTAProps) {
           <Smile className="w-8 h-8 md:w-10 md:h-10 text-[#1DB38A] dark:text-[#8CE0A7]" strokeWidth={2.5} />
         </div>
         <h2 className="text-[32px] md:text-[52px] font-black text-[#2B4B3D] dark:text-stone-50 tracking-[-0.02em] mb-3 md:mb-4">Start Today.</h2>
-        <p className="text-[14px] md:text-[18px] font-medium text-[#8CAAB8] dark:text-stone-400 leading-[1.65] mb-1.5 md:mb-2">Nggak perlu sempurna. Nggak perlu tahu segalanya tentang kesehatanmu.</p>
+        <p className="text-[14px] md:text-[18px] font-medium text-[#8CAAB8] dark:text-stone-400 leading-[1.65] mb-1.5 md:mb-2">Tidak perlu sempurna. Tidak perlu tahu segalanya tentang kesehatanmu.</p>
         <p className="text-[14px] md:text-[18px] font-bold text-[#2B4B3D] dark:text-stone-200">Cukup mulai. Vee akan ikut tumbuh bersamamu.</p>
         
         <div className="mt-8 md:mt-12 p-8 inline-block" onMouseMove={handleFooterBtnMouseMove} onMouseLeave={() => setFooterBtnTransform({x: 0, y: 0})}>

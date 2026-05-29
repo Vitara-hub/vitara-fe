@@ -7,6 +7,7 @@ import ActivityChart from '@/components/activity/ActivityChart';
 import RecentHistory from '@/components/activity/RecentHistory';
 import Skeleton from '@/components/ui/Skeleton';
 import type { ActivityChartPoint, ActivityDataResponse, ActivityHistoryItem, ActivityType } from '@/types/api';
+import type { VeeOverrideState } from '@/utils/veeLogic';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ACTIVITY_CACHE_TTL = 5 * 60 * 1000;
@@ -157,6 +158,7 @@ export default function ActivityPage() {
   const activityData = cachedActivityData.data || emptyActivityData;
   const [isLoading, setIsLoading] = useState<boolean>(() => !hasFreshCache);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const observerVeeState: VeeOverrideState = { activeTraits: ['glasses'] };
 
   const localActivityData = useMemo(() => buildLocalActivityData(activityHistory), [activityHistory]);
 
@@ -216,6 +218,7 @@ export default function ActivityPage() {
         weeklyChangePercent={activityData.weekly_change_percent}
         chartData={activityData.chart}
         isLoading={isLoading}
+        overrideState={!isLoading ? observerVeeState : undefined}
       />
       <RecentHistory items={activityData.history} isLoading={isLoading} />
       

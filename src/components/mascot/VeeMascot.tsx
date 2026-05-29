@@ -1,9 +1,13 @@
+// src/components/mascot/VeeMascot.tsx
 import React, { useRef, useEffect, useState } from 'react';
 import useStore from '@/store/useStore';
-
-export type VeeHealthStatus = 'fresh' | 'tired' | 'stressed' | 'waiting' | 'sick' | 'eating' | 'sleeping';
+import { calculateFinalVeeState } from '@/utils/veeLogic';
+import type { DashboardData, VeeOverrideState } from '@/utils/veeLogic';
+import type { VeeHealthStatus } from '@/store/useStore';
 
 export interface VeeMascotProps {
+  data?: DashboardData;
+  overrideState?: VeeOverrideState;
   isTyping?: boolean;
   isEating?: boolean;
   isSleeping?: boolean;
@@ -17,9 +21,12 @@ export interface VeeMascotProps {
   eyeLookX?: number;
   eyeLookY?: number;
   isEcoMode?: boolean; 
+  ignoreSystemStatus?: boolean;
 }
 
 export default function VeeMascot({ 
+  data,
+  overrideState,
   isTyping = false, 
   isEating = false, 
   isSleeping = false, 
@@ -32,14 +39,12 @@ export default function VeeMascot({
   jumpDirection = null,
   eyeLookX = 0, 
   eyeLookY = 0,
-  isEcoMode = false
+  isEcoMode = false,
+  ignoreSystemStatus = false
 }: VeeMascotProps) {
   const faceRef = useRef<HTMLDivElement>(null);
   const isServerDown = useStore((state) => state.isServerDown); 
 
-  // ==========================================
-  // LOGIKA AUTO-DETECT WIFI (PWA MAGIC)
-  // ==========================================
   const [isBrowserOffline, setIsBrowserOffline] = useState<boolean>(false);
 
   useEffect(() => {
@@ -54,21 +59,19 @@ export default function VeeMascot({
     };
   }, []);
 
-  // ==========================================
-  // 🚀 LOGIKA PEMISAHAN OFFLINE VS LOADING
-  // ==========================================
-  const offlineActive = isOffline || isBrowserOffline || isServerDown;
-  const isActuallySyncing = !offlineActive && (isSyncing || veeHealth === 'waiting');
+  const offlineActive = !ignoreSystemStatus && (isOffline || isBrowserOffline || isServerDown);
+  const isActuallySyncing = !ignoreSystemStatus && !offlineActive && (isSyncing || veeHealth === 'waiting');
 
-  // 🚀 FIX KUNCI: Syncing TIDAK LAGI membatalkan animasi tidur/makan/jurnal!
-  // Jadi kalau lagi tidur terus sync, dia tetep tidur pules.
   const activeEating = offlineActive ? false : isEating;
   const activeSleeping = offlineActive ? false : isSleeping;
   const activeTyping = offlineActive ? false : isTyping;
 
-  // ==========================================
-  // LOGIKA VEE MENGEJAR MOUSE
-  // ==========================================
+  const { baseColorClass = '#8CE0A7', activeTraits = [], expression } = calculateFinalVeeState(veeHealth, data, overrideState);
+  const finalExpression = activeSleeping ? 'yawn' : activeEating ? 'hungry' : expression;
+
+  const color = offlineActive ? '#B0C4DE' : baseColorClass;
+  const ahogeColor = color; 
+
   const [walkX, setWalkX] = useState<number>(0);
   const [facing, setFacing] = useState<number>(1);
   const [isMoving, setIsMoving] = useState<boolean>(false);
@@ -107,9 +110,7 @@ export default function VeeMascot({
     };
   }, [isWalking, isEcoMode, offlineActive, isActuallySyncing]); 
 
-  // EYES TRACKING
   useEffect(() => {
-    // 🚀 Kalau lagi tidur, matanya diem aja nggak usah ngelirik walau loading
     if (!faceRef.current || offlineActive || isActuallySyncing || activeSleeping) return; 
     faceRef.current.style.transform = `translate3d(${eyeLookX * facing}px, ${eyeLookY}px, 0)`;
   }, [eyeLookX, eyeLookY, facing, offlineActive, isActuallySyncing, activeSleeping]);
@@ -120,18 +121,11 @@ export default function VeeMascot({
     }
   };
 
-  // ==========================================
-  // 🚀 WARNA & KECEPATAN ANIMASI (REVISI "REACT")
-  // ==========================================
-  const color = offlineActive ? '#B0C4DE' : veeHealth === 'tired' || veeHealth === 'sick' ? '#8CAAB8' : veeHealth === 'stressed' ? '#FF9F66' : '#8CE0A7';
-  const ahogeColor = color; 
-  
-  // 🚀 FIX: Kalau Syncing Jurnal, gerakannya cepet (0.5s) seolah AI lagi mikir keras baca ketikan!
   const wobbleSpeed = offlineActive ? '6s' 
-    : activeSleeping ? '5s' // Tidur selalu damai
-    : (isActuallySyncing && activeTyping) ? '0.5s' // Vee Mikir Jurnal = Bereaksi Cepet
+    : activeSleeping ? '5s' 
+    : (isActuallySyncing && activeTyping) ? '0.5s' 
     : isActuallySyncing ? '2.5s' 
-    : veeHealth === 'fresh' ? '1.2s' 
+    : finalExpression === 'fresh' ? '1.2s' 
     : activeTyping ? '0.8s' 
     : activeEating ? '1.5s' 
     : '4s';
@@ -158,7 +152,6 @@ export default function VeeMascot({
         style={{ transform: `scaleX(${facing})`, '--facing': facing } as React.CSSProperties}
       >
         
-        {/* AHOGE 'V' SLIME */}
         <div 
           aria-hidden="true"
           className="absolute w-[40px] h-[40px] z-20"
@@ -176,7 +169,6 @@ export default function VeeMascot({
           <div className="absolute top-[8px] left-[26px] w-[8px] h-[3.5px] bg-white/60 rounded-full rotate-[15deg] blur-[0.5px]"></div>
         </div>
 
-        {/* BODY SLIME & WAJAH VEE */}
         <div className="relative flex justify-center mt-1">
           <div
             aria-hidden="true"
@@ -207,30 +199,23 @@ export default function VeeMascot({
                     <g opacity="0.4">
                       <line x1="14" y1="22" x2="20" y2="22" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" />
                       <line x1="44" y1="22" x2="50" y2="22" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" />
-                      <path d="M 28,26 Q 32,28 36,26" fill="none" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" />
                     </g>
                   ) : activeSleeping ? (
-                    // 🚀 MATA TIDUR SEKARANG MENANG DARI MATA LOADING
                     <g>
                       <line x1="12" y1="20" x2="22" y2="20" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" opacity="0.8" />
                       <line x1="42" y1="20" x2="52" y2="20" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" opacity="0.8" />
                     </g>
                   ) : isActuallySyncing ? (
-                    // MATA LOADING/SYNCING (Garis datar berkedip)
                     <g>
                       <line x1="12" y1="19" x2="22" y2="19" stroke={strokeColor} strokeWidth="3" strokeLinecap="round" className="animate-pulse" />
                       <line x1="42" y1="19" x2="52" y2="19" stroke={strokeColor} strokeWidth="3" strokeLinecap="round" className="animate-pulse" style={{ animationDelay: '250ms' }} />
                     </g>
-                  ) : veeHealth === 'tired' || veeHealth === 'sick' ? (
+                  ) : finalExpression === 'tired' || finalExpression === 'yawn' ? (
                     <g>
                       <path d="M 12,18 Q 17,21 22,20" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" />
                       <path d="M 42,20 Q 47,21 52,18" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" />
-                      <g opacity="0.25">
-                        <path d="M 10,24 Q 17,28 24,23" fill="none" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" />
-                        <path d="M 40,23 Q 47,28 54,24" fill="none" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" />
-                      </g>
                     </g>
-                  ) : activeEating || veeHealth === 'stressed' ? (
+                  ) : finalExpression === 'hungry' || finalExpression === 'empathetic' || finalExpression === 'stressed' ? (
                     <g>
                       <path d="M 12,17 L 18,20 L 12,23" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                       <path d="M 52,17 L 46,20 L 52,23" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -242,9 +227,38 @@ export default function VeeMascot({
                     </g>
                   )}
 
-                  {/* 🚀 BLUSH PIPI: Tetep ada pas lagi mikir/loading Jurnal! */}
+                  {activeTraits.includes('eye-bags') && !activeSleeping && !offlineActive && (
+                    <g opacity="0.3">
+                      <path d="M 10,24 Q 17,28 24,23" fill="none" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" />
+                      <path d="M 40,23 Q 47,28 54,24" fill="none" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" />
+                    </g>
+                  )}
+
+                  {activeTraits.includes('sweat') && !offlineActive && (
+                    <path d="M 50,4 C 50,4 47,8 47,10 C 47,12 48,13 50,13 C 52,13 53,12 53,10 C 53,8 50,4 50,4 Z" fill="#93C5FD" opacity="0.9" />
+                  )}
+
+                  {activeTraits.includes('glasses') && !offlineActive && (
+                    <g stroke={strokeColor} strokeWidth="2" fill="none" opacity="0.9">
+                      <rect x="8" y="14" width="18" height="12" rx="3" />
+                      <rect x="38" y="14" width="18" height="12" rx="3" />
+                      <path d="M 26,20 L 38,20" />
+                    </g>
+                  )}
+
+                  {(!offlineActive && !isActuallySyncing) && (
+                    <g stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" fill="none">
+                      {finalExpression === 'fresh' && <path d="M 26,26 Q 32,32 38,26" />}
+                      {finalExpression === 'hungry' && <path d="M 26,28 L 38,28" className={activeEating ? "animate-pulse" : ""} />}
+                      {finalExpression === 'tired' && <path d="M 26,30 Q 32,26 38,30" />}
+                      {finalExpression === 'empathetic' && <path d="M 28,28 Q 32,30 36,28" strokeWidth="2" />}
+                      {finalExpression === 'stressed' && <path d="M 26,28 L 38,28" />}
+                      {finalExpression === 'yawn' && <ellipse cx="32" cy="28" rx="3" ry="5" fill={strokeColor} />}
+                    </g>
+                  )}
+
                   {(!activeSleeping && !offlineActive) && (
-                    <g opacity={activeTyping || activeEating || veeHealth === 'stressed' ? "0.8" : isActuallySyncing ? "0.4" : "0.5"} className="transition-opacity duration-300">
+                    <g opacity={activeTyping || activeEating || baseColorClass === '#FF9F66' ? "0.8" : isActuallySyncing ? "0.4" : "0.5"} className="transition-opacity duration-300">
                       <ellipse cx="12" cy="25" rx="6.5" ry="3.5" fill="#FF9F66" />
                       <ellipse cx="52" cy="25" rx="6.5" ry="3.5" fill="#FF9F66" />
                     </g>
@@ -255,7 +269,6 @@ export default function VeeMascot({
           </div>
         </div>
         
-        {/* 🚀 Zzz Tetep muncul walau lagi proses Loading API */}
         {activeSleeping && (
           <div className="absolute top-2 -right-4 text-[#244135]/60 dark:text-stone-300/60 font-black animate-[ping_3s_infinite_ease-in-out] z-30">
             Z<span className="text-sm">z</span><span className="text-xs">z</span>
