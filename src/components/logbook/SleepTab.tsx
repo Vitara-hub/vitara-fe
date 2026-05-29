@@ -21,6 +21,7 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
   const [wakeTime, setWakeTime] = useState<string>('06:30');
   const [interruptions, setInterruptions] = useState<number>(0);
   const [sleepState, setSleepState] = useState<'input' | 'sleeping' | 'result'>('input');
+  const [resultHealth, setResultHealth] = useState<VeeHealthStatus | null>(null);
   const [popup, setPopup] = useState<PopupState>({ isOpen: false, title: '', message: '', type: 'info' });
   
   const { addLog, updateMetric } = useStore();
@@ -36,9 +37,11 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
   };
 
   const dur = getSleepDuration();
+  const displayedHealth = resultHealth ?? veeHealth;
 
   const handleSaveSleep = async () => {
     setSleepState('sleeping');
+    setResultHealth(null);
     
     try {
       const durationFloat = dur.h + (dur.m / 60);
@@ -49,8 +52,9 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
         interruptions
       });
 
-      if (response.quality_score >= 70) setVeeHealth('fresh');
-      else setVeeHealth('tired');
+      const nextHealth: VeeHealthStatus = response.quality_score >= 70 ? 'fresh' : 'tired';
+      setResultHealth(nextHealth);
+      setVeeHealth(nextHealth);
 
       updateMetric('sleep', { quality_score: response.quality_score });
       addLog({ type: 'sleep', summary: `Tidur ${dur.h}j ${dur.m}m (Skor: ${response.quality_score})`, qualityScore: response.quality_score, syncStatus: 'synced' });
@@ -59,6 +63,7 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
       // 🚀 OFFLINE FIRST: Tidak ada tebakan skor tidur.
       console.warn("Sleep API Offline, queuing locally...", error);
       
+      setResultHealth('waiting');
       setVeeHealth('waiting');
       
       addLog({ 
@@ -90,7 +95,7 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
         <div className="mt-4 z-10">
           {sleepState === 'input' && <VeeMascot jumpDirection={jumpDirection} veeHealth={veeHealth} scale={1.2} weight={weight} eyeLookX={eyeLookX} eyeLookY={eyeLookY} />}
           {sleepState === 'sleeping' && <VeeMascot isSleeping={true} veeHealth={veeHealth} scale={1.2} weight={weight} eyeLookX={eyeLookX} eyeLookY={eyeLookY} />}
-          {sleepState === 'result' && <VeeMascot veeHealth={veeHealth} scale={1.2} weight={weight} eyeLookX={eyeLookX} eyeLookY={eyeLookY} />}
+          {sleepState === 'result' && <VeeMascot veeHealth={displayedHealth} scale={1.2} weight={weight} eyeLookX={eyeLookX} eyeLookY={eyeLookY} />}
         </div>
       </div>
 
@@ -134,12 +139,12 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
       {sleepState === 'result' && (
         <div className="bg-white dark:bg-[#1A1D1B] p-8 rounded-[28px] text-center shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-transparent dark:border-stone-800/50 animate-in zoom-in-95 duration-300">
            <h3 className="text-2xl font-black text-[#244135] dark:text-stone-100 mb-3">
-             {veeHealth === 'waiting' ? 'Data Disimpan! ⏳' : veeHealth === 'fresh' ? 'Segar Banget! ☀️' : 'Kurang Tidur ya? 💤'}
+             {displayedHealth === 'waiting' ? 'Data Disimpan! ⏳' : displayedHealth === 'fresh' ? 'Segar Banget! ☀️' : 'Kurang Tidur ya? 💤'}
            </h3>
            <p className="text-[#647C73] dark:text-stone-400 text-sm font-medium mb-8 leading-relaxed">
-             {veeHealth === 'waiting' 
+             {displayedHealth === 'waiting' 
                ? 'Durasi tidurmu sudah diamankan. Server sedang offline, tapi Vee akan menganalisis skor pemulihanmu nanti.' 
-               : veeHealth === 'fresh' ? 'Vee kelihatan sehat (hijau) karena kamu tidur cukup! Pertahankan rutinitas ini biar produktif seharian.' : 'Warna Vee jadi pucat kebiruan dan matanya turun. Besok jangan begadang lagi ya, kasihan badanmu!'}
+               : displayedHealth === 'fresh' ? 'Vee kelihatan sehat (hijau) karena kamu tidur cukup! Pertahankan rutinitas ini biar produktif seharian.' : 'Warna Vee jadi pucat kebiruan dan matanya turun. Besok jangan begadang lagi ya, kasihan badanmu!'}
            </p>
            <button onClick={() => setSleepState('input')} className="w-full py-4 rounded-[22px] bg-[#F4F6F5] dark:bg-[#121413] text-[#244135] dark:text-stone-100 font-black text-sm hover:scale-[1.02] transition-transform">Tutup</button>
         </div>

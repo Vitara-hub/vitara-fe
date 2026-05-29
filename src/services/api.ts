@@ -255,14 +255,15 @@ export const vitaraApi = {
           interruptions: data.interruptions,
         };
 
-    const response = await apiClient.post<ApiEnvelope<{ qualityScore: number }>>(
+    const response = await apiClient.post<ApiEnvelope<{ qualityScore?: number; quality_score?: number }>>(
       '/api/sleep/analyze',
       body,
     );
     const result = unwrap(response.data);
+    const qualityScore = result.qualityScore ?? result.quality_score;
 
     return {
-      quality_score: result.qualityScore,
+      quality_score: qualityScore ?? 0,
     };
   },
 
