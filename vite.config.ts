@@ -6,7 +6,9 @@ import path from 'path';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const apiOrigin = env.VITE_API_URL ? new URL(env.VITE_API_URL).origin : '';
+  const apiOrigin = env.VITE_API_URL && env.VITE_API_URL.startsWith('http') 
+    ? new URL(env.VITE_API_URL).origin 
+    : '';
 
   return {
   resolve: {
