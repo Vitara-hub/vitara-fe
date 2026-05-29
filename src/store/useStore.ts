@@ -13,11 +13,11 @@ import { isApiConfigured, resetChatSession, vitaraApi } from '@/services/api';
 import type { AuthMeResponse, AuthTokensResponse } from '@/types/api';
 import type { ActivityDataResponse, ChatHistoryMessage, HealthScoreResponse } from '@/types/api';
 
-export interface BaseActivityLog { 
-  id: number; 
-  timestamp: string; 
-  summary: string; 
-  syncStatus?: 'synced' | 'pending'; 
+export interface BaseActivityLog {
+  id: number;
+  timestamp: string;
+  summary: string;
+  syncStatus?: 'synced' | 'pending';
 }
 
 export interface JournalLog extends BaseActivityLog { type: 'journal'; emotion?: string; stressLevel?: number; }
@@ -27,7 +27,7 @@ export interface ChatLog extends BaseActivityLog { type: 'chat'; }
 
 export type ActivityLog = JournalLog | FoodLog | SleepLog | ChatLog;
 
-export type NewActivityLog = 
+export type NewActivityLog =
   | Omit<JournalLog, 'id' | 'timestamp'>
   | Omit<FoodLog, 'id' | 'timestamp'>
   | Omit<SleepLog, 'id' | 'timestamp'>
@@ -105,13 +105,13 @@ function getLoggedOutState() {
 export function getFriendlyAuthError(error: unknown) {
   const responseData =
     error &&
-    typeof error === 'object' &&
-    'response' in error &&
-    error.response &&
-    typeof error.response === 'object' &&
-    'data' in error.response &&
-    error.response.data &&
-    typeof error.response.data === 'object'
+      typeof error === 'object' &&
+      'response' in error &&
+      error.response &&
+      typeof error.response === 'object' &&
+      'data' in error.response &&
+      error.response.data &&
+      typeof error.response.data === 'object'
       ? (error.response.data as Record<string, unknown>)
       : null;
   const responseMessage =
@@ -266,24 +266,24 @@ const useStore = create<StoreState>()(
           set({ isAuthenticated: false, isAuthLoading: false, user: null });
         }
       },
-      
-      isDarkMode: false, 
+
+      isDarkMode: false,
       toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
-      
+
       veeHealth: 'fresh',
       veeWeight: 1,
-      setVeeState: (health, weight) => set((state) => ({ 
-        veeHealth: health || state.veeHealth, 
-        veeWeight: weight || state.veeWeight 
+      setVeeState: (health, weight) => set((state) => ({
+        veeHealth: health || state.veeHealth,
+        veeWeight: weight || state.veeWeight
       })),
-      
+
       activityHistory: [],
       addLog: (log) => set((state) => {
-        const newLog = { 
-          id: Date.now(), 
-          timestamp: new Date().toISOString(), 
+        const newLog = {
+          id: Date.now(),
+          timestamp: new Date().toISOString(),
           syncStatus: 'pending',
-          ...log 
+          ...log
         } as ActivityLog;
         return { activityHistory: [newLog, ...state.activityHistory] };
       }),
@@ -330,5 +330,6 @@ const useStore = create<StoreState>()(
     }
   )
 );
+
 
 export default useStore;
