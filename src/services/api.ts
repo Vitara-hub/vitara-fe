@@ -37,7 +37,7 @@ import type {
   TypingResponse,
 } from '@/types/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 if (!import.meta.env.VITE_API_URL && import.meta.env.PROD) {
   console.error('FATAL ERROR: VITE_API_URL is not configured for production builds.');
@@ -57,7 +57,7 @@ let chatSessionId: string | null = null;
 async function refreshAccessToken(): Promise<void> {
   // Rely on HttpOnly cookie for refresh token
   const response = await axios.post<ApiEnvelope<AuthTokensResponse>>(
-    `${API_URL}/api/auth/refresh`,
+    API_URL === '/' ? '/api/auth/refresh' : `${API_URL}/api/auth/refresh`,
     {},
     { headers: { 'Content-Type': 'application/json' }, timeout: 10000, withCredentials: true },
   );
@@ -250,10 +250,10 @@ export const vitaraApi = {
       'sleepTime' in data
         ? data
         : {
-            sleepTime: data.bedtime,
-            wakeTime: data.wake_time,
-            interruptions: data.interruptions,
-          };
+          sleepTime: data.bedtime,
+          wakeTime: data.wake_time,
+          interruptions: data.interruptions,
+        };
 
     const response = await apiClient.post<ApiEnvelope<{ qualityScore: number }>>(
       '/api/sleep/analyze',
@@ -353,7 +353,8 @@ export const vitaraApi = {
   sendChatMessage: async (data: ChatRequest, onChunk?: (text: string) => void): Promise<ChatResponse> => {
     const sessionId = data.sessionId ?? (await resolveChatSessionId());
 
-    const response = await fetch(`${API_URL}/api/chat/messages`, {
+    const fetchUrl = API_URL === '/' ? '/api/chat/messages' : `${API_URL}/api/chat/messages`;
+    const response = await fetch(fetchUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -395,7 +396,7 @@ export const vitaraApi = {
               fullText = parsed.full_response;
               onChunk?.(fullText);
             }
-          } catch {}
+          } catch { }
         }
       }
     }
