@@ -73,13 +73,6 @@ interface RecentHistoryProps {
 }
 
 export default function RecentHistory({ items, isLoading = false }: RecentHistoryProps) {
-  const handleSeeAll = () => {
-    if (window.location.pathname !== '/activity') {
-      window.history.pushState({}, '', '/activity');
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    }
-  };
-
   return (
     <div>
       <div className="flex justify-between items-center mb-4 mt-2">
@@ -87,13 +80,12 @@ export default function RecentHistory({ items, isLoading = false }: RecentHistor
          {isLoading ? (
            <Skeleton className="h-3 w-16" />
          ) : (
-           <button
-             type="button"
-             onClick={handleSeeAll}
+           <a
+             href="/activity"
              className="text-[10px] font-bold text-[#8CAAB8] dark:text-stone-500 cursor-pointer hover:text-[#8CE0A7] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7] rounded-md"
            >
              Lihat Semua
-           </button>
+           </a>
          )}
       </div>
       <div className="space-y-3">
