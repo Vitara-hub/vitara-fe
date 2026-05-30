@@ -275,8 +275,12 @@ export const vitaraApi = {
     return unwrap(response.data);
   },
 
-  requestAccountDeletion: async (): Promise<void> => {
-    await apiClient.post('/api/profile/request-delete', { requestDelete: true });
+  requestDataDeletion: async (): Promise<void> => {
+    const response = await apiClient.post<ApiEnvelope<Record<string, never>>>(
+      '/api/profile/request-delete',
+      { requestDelete: true },
+    );
+    unwrap(response.data);
   },
 
   logout: async (): Promise<void> => {

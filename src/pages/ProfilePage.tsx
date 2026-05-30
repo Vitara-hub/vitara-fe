@@ -1,6 +1,7 @@
 // src/pages/ProfilePage.tsx
 import { useState } from 'react';
 import useStore from '@/store/useStore';
+import { vitaraApi } from '@/services/api';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import { LogOut, Trash2, ChevronRight, Settings, Bell, Shield } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
@@ -20,8 +21,9 @@ const closedAlert: ProfileAlertState = {
 };
 
 export default function ProfilePage() {
-  const { user, veeHealth, logout, clearHistory } = useStore();
+  const { user, veeHealth, logout } = useStore();
   const [alertConfig, setAlertConfig] = useState<ProfileAlertState>(closedAlert);
+  const [isDeletingData, setIsDeletingData] = useState<boolean>(false);
   const isLoading = false;
 
   const closeAlert = () => setAlertConfig((current) => ({ ...current, isOpen: false }));
@@ -40,17 +42,43 @@ export default function ProfilePage() {
     logout();
   };
 
-  const handleClearData = () => {
+  const submitDataDeletionRequest = async () => {
+    setIsDeletingData(true);
+
+    try {
+      await vitaraApi.requestDataDeletion();
+      setAlertConfig({
+        isOpen: true,
+        title: 'Permintaan Dikirim',
+        message: 'Permintaan penghapusan data riwayat aktivitas berhasil dikirim. Akun kamu tetap aktif dan aman.',
+        type: 'success',
+        confirmLabel: 'Mengerti',
+      });
+    } catch (error) {
+      console.warn('Failed to request data deletion.', error);
+      setAlertConfig({
+        isOpen: true,
+        title: 'Permintaan Gagal',
+        message: 'Permintaan penghapusan data riwayat belum berhasil dikirim. Coba lagi sebentar lagi.',
+        type: 'error',
+        confirmLabel: 'Mengerti',
+      });
+    } finally {
+      setIsDeletingData(false);
+    }
+  };
+
+  const handleRequestDataDeletion = () => {
     setAlertConfig({
       isOpen: true,
-      title: 'Are you sure?',
-      message: 'This will permanently delete your activity history from this device.',
+      title: 'Ajukan Penghapusan Data?',
+      message: 'Apakah kamu yakin ingin mengajukan penghapusan semua data riwayat aktivitas? Tindakan ini tidak dapat dibatalkan, namun akun kamu akan tetap aman.',
       type: 'error',
       variant: 'danger',
-      confirmLabel: 'Confirm',
-      cancelLabel: 'Cancel',
+      confirmLabel: 'Ajukan',
+      cancelLabel: 'Batal',
       onConfirm: () => {
-        clearHistory();
+        void submitDataDeletionRequest();
       },
     });
   };
@@ -125,14 +153,15 @@ export default function ProfilePage() {
               
               <div className="bg-white dark:bg-[#1A1D1B] rounded-[28px] p-2 shadow-sm border border-[#E8F0EA] dark:border-stone-800 space-y-1">
                 <button 
-                  onClick={handleClearData}
+                  onClick={handleRequestDataDeletion}
+                  disabled={isDeletingData}
                   aria-label="Hapus seluruh riwayat data kesehatan Anda"
-                  className="w-full flex items-center gap-4 p-4 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-[20px] transition-all group text-left shadow-[0_8px_24px_rgba(220,38,38,0.18)] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#1A1D1B]"
+                  className="w-full flex items-center gap-4 p-4 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-[20px] transition-all group text-left shadow-[0_8px_24px_rgba(220,38,38,0.18)] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#1A1D1B] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-red-600"
                 >
                   <div aria-hidden="true" className="w-10 h-10 rounded-[14px] bg-white/15 flex items-center justify-center text-white group-hover:scale-110 transition-transform"><Trash2 size={18} /></div>
                   <div>
-                    <span className="block font-bold text-white text-sm">Hapus Riwayat Data</span>
-                    <span className="block text-xs font-medium text-red-100 mt-0.5">Mereset skor dan aktivitas Vitara</span>
+                    <span className="block font-bold text-white text-sm">{isDeletingData ? 'Mengirim Permintaan...' : 'Hapus Riwayat Data'}</span>
+                    <span className="block text-xs font-medium text-red-100 mt-0.5">Ajukan penghapusan logbook, chat, dan aktivitas</span>
                   </div>
                 </button>
 
