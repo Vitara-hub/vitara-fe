@@ -5,6 +5,7 @@ import { vitaraApi } from '@/services/api';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import VeeStatusWidget from '@/components/dashboard/VeeStatusWidget';
 import PillarsGrid from '@/components/dashboard/PillarsGrid';
+import { deriveVeeHealthFromDashboard } from '@/utils/veeLogic';
 
 interface DashboardPageProps {
   isDarkMode: boolean;
@@ -20,9 +21,7 @@ function isFresh(fetchedAt: number | null, ttl = DASHBOARD_CACHE_TTL) {
 export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardPageProps) {
   const {
     user,
-    veeHealth,
     veeWeight,
-    setVeeState,
     dashboardHealthScore,
     setDashboardHealthScore,
   } = useStore();
@@ -56,7 +55,6 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
 
         if (!dashboardData) setDashboardHealthScore(null);
         setErrorMessage('Dashboard hari ini belum bisa dimuat. Data terakhir tetap ditampilkan bila tersedia.');
-        setVeeState('waiting', veeWeight);
       } finally {
         if (isMounted) setIsSyncing(false);
       }
@@ -72,11 +70,12 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
     hasFreshCache,
     dashboardData,
     setDashboardHealthScore,
-    setVeeState,
-    veeWeight,
   ]);
 
   const isLoading = isSyncing && !dashboardData;
+  const dashboardVeeHealth = errorMessage
+    ? 'waiting'
+    : deriveVeeHealthFromDashboard(dashboardData);
 
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-6 space-y-6">
@@ -95,7 +94,7 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
       )}
       
       <VeeStatusWidget 
-        veeHealth={veeHealth} 
+        veeHealth={dashboardVeeHealth} 
         veeWeight={veeWeight} 
         realScore={dashboardData?.healthScore}
         isSyncing={isLoading}

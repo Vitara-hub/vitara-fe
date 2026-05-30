@@ -49,9 +49,6 @@ export const useAutoSync = () => {
           }
         }
 
-        if (!useStore.getState().isServerDown) {
-          useStore.getState().setVeeState('fresh');
-        }
       })().finally(() => {
         isSyncing = false;
       });
