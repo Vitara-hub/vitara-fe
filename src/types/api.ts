@@ -183,8 +183,9 @@ export interface ChatSession {
 export interface ChatMessageItem {
   id: string;
   sessionId: string;
-  role: 'user' | 'assistant' | string;
+  role: 'user' | 'assistant';
   content: string;
+  recommendations?: string[];
   model?: string | null;
   createdAt: string;
 }
@@ -196,6 +197,7 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   response: string;
+  full_response?: string;
   recommendations: string[];
 }
 

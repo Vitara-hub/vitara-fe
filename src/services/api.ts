@@ -54,6 +54,61 @@ const apiClient = axios.create({
 
 let chatSessionId: string | null = null;
 
+interface ChatPayload {
+  response?: string;
+  full_response?: string;
+  recommendations?: string[];
+}
+
+interface ChatEnvelopePayload extends ChatPayload {
+  data?: ChatPayload;
+}
+
+interface ChatStreamChunk {
+  token?: string;
+  full_response?: string;
+  recommendations?: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function toChatPayload(raw: unknown): ChatPayload {
+  if (!isRecord(raw)) return {};
+
+  const payload: ChatPayload = {};
+  const responseValue = raw.response;
+  const fullResponseValue = raw.full_response;
+  const recommendationsValue = raw.recommendations;
+
+  if (typeof responseValue === 'string') payload.response = responseValue;
+  if (typeof fullResponseValue === 'string') payload.full_response = fullResponseValue;
+  if (isStringArray(recommendationsValue)) payload.recommendations = recommendationsValue;
+
+  return payload;
+}
+
+function toChatEnvelopePayload(raw: unknown): ChatEnvelopePayload {
+  if (!isRecord(raw)) return {};
+  const rootPayload = toChatPayload(raw);
+  const dataPayload = isRecord(raw.data) ? toChatPayload(raw.data) : undefined;
+  return dataPayload ? { ...rootPayload, data: dataPayload } : rootPayload;
+}
+
+function toChatStreamChunk(raw: unknown): ChatStreamChunk {
+  if (!isRecord(raw)) return {};
+  return {
+    token: typeof raw.token === 'string' ? raw.token : undefined,
+    full_response: typeof raw.full_response === 'string' ? raw.full_response : undefined,
+    recommendations: raw.recommendations,
+  };
+}
+
 async function refreshAccessToken(): Promise<void> {
   // Rely on HttpOnly cookie for refresh token
   const response = await axios.post<ApiEnvelope<AuthTokensResponse>>(
@@ -65,14 +120,12 @@ async function refreshAccessToken(): Promise<void> {
   setAuthTokens(unwrap(response.data));
 }
 
-export async function ensureValidAccessToken(): Promise<void> {
+export function ensureValidAccessToken(): Promise<void> {
   // Rely on HttpOnly cookies; if missing/expired, the interceptor will handle 401.
   return Promise.resolve();
 }
 
-apiClient.interceptors.request.use(async (config) => {
-  return config;
-});
+apiClient.interceptors.request.use((config) => config);
 
 apiClient.interceptors.response.use(
   (response) => response,
@@ -371,6 +424,18 @@ export const vitaraApi = {
       throw new Error(`Chat API error: ${response.statusText}`);
     }
 
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const payload = toChatEnvelopePayload(await response.json() as unknown);
+      const source = payload.data ?? payload;
+      const finalText = source.full_response ?? source.response ?? "";
+      return {
+        response: finalText,
+        full_response: source.full_response,
+        recommendations: source.recommendations ?? [],
+      };
+    }
+
     if (!response.body) {
       return { response: "", recommendations: [] };
     }
@@ -378,6 +443,7 @@ export const vitaraApi = {
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let fullText = "";
+    let recommendations: string[] = [];
 
     while (true) {
       const { done, value } = await reader.read();
@@ -389,7 +455,7 @@ export const vitaraApi = {
         const dataStr = line.slice(5).trim();
         if (dataStr) {
           try {
-            const parsed = JSON.parse(dataStr);
+            const parsed = toChatStreamChunk(JSON.parse(dataStr) as unknown);
             if (parsed.token) {
               fullText += parsed.token;
               onChunk?.(fullText);
@@ -397,14 +463,21 @@ export const vitaraApi = {
               fullText = parsed.full_response;
               onChunk?.(fullText);
             }
-          } catch { }
+
+            if (isStringArray(parsed.recommendations)) {
+              recommendations = parsed.recommendations;
+            }
+          } catch {
+            // Ignore malformed partial chunks and continue streaming.
+          }
         }
       }
     }
 
     return {
       response: fullText,
-      recommendations: [],
+      full_response: fullText,
+      recommendations,
     };
   },
 

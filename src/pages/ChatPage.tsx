@@ -50,11 +50,7 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (hasFreshCache && chatMessages.data) {
-      setMessages(chatMessages.data);
-      setIsInitialLoading(false);
-      return;
-    }
+    if (hasFreshCache && chatMessages.data) return;
 
     let isMounted = true;
 
@@ -70,6 +66,7 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
                 id: String(item.id || `remote_${index}`),
                 role: item.role === 'assistant' ? 'ai' : 'user',
                 text: item.content,
+                recommendations: item.recommendations,
               }))
             : [getGreetingMessage(veeHealth)];
 
@@ -126,10 +123,12 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
         }
       );
 
+      const finalResponseText = response.full_response ?? response.response ?? '';
+
       updateMessages((prev) =>
         prev.map((m) =>
           m.id === aiMessageId
-            ? { ...m, text: response.response, recommendations: response.recommendations }
+            ? { ...m, text: finalResponseText, recommendations: response.recommendations }
             : m
         )
       );
@@ -165,7 +164,12 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
     <div className="flex-1 flex flex-col w-full relative bg-[#FAF9F6] dark:bg-[#121413] pb-28 md:pb-6 overflow-hidden">
       <ChatHeader veeHealth={veeHealth} isLoading={isSending || isInitialLoading} />
       <MessageList messages={messages} isInitialLoading={isInitialLoading} bottomRef={bottomRef} />
-      <ChatInput inputMessage={inputMessage} setInputMessage={setInputMessage} handleSend={handleSend} isLoading={isSending || isInitialLoading} />
+      <ChatInput
+        inputMessage={inputMessage}
+        setInputMessage={setInputMessage}
+        handleSend={() => { void handleSend(); }}
+        isLoading={isSending || isInitialLoading}
+      />
     </div>
   );
 }
