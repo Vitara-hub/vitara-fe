@@ -87,7 +87,7 @@ export default function VeeStatusWidget({
           </div>
         )}
 
-        <div className="w-24 h-24 shrink-0 flex items-center justify-center relative z-10 cursor-pointer" onClick={handleVeeClick}>
+        <div className="w-24 h-28 pt-4 shrink-0 flex items-center justify-center relative z-10 cursor-pointer" onClick={handleVeeClick}>
           {isSyncing ? (
             <Skeleton className="w-24 h-24 rounded-full bg-[#E8F0EA] dark:bg-[#1A2620]" />
           ) : (

@@ -1,4 +1,5 @@
 // src/components/activity/ActivityChart.tsx
+import { useState } from 'react';
 import VeeMascot from '@/components/mascot/VeeMascot';
 import type { VeeHealthStatus } from '@/store/useStore';
 import Skeleton from '@/components/ui/Skeleton';
@@ -24,6 +25,7 @@ export default function ActivityChart({
   isLoading = false,
   overrideState,
 }: ActivityChartProps) {
+  const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
   const weeklyChangeLabel = `${weeklyChangePercent >= 0 ? '+' : ''}${weeklyChangePercent}% dr minggu lalu`;
 
   return (
@@ -63,20 +65,29 @@ export default function ActivityChart({
         </div>
       </div>
 
-      <div className="flex justify-between items-end h-32 gap-2 mt-4 relative z-10">
-        {chartData.map((item) => {
+      <div className="flex justify-between items-end h-32 gap-2 mt-4 relative z-10 touch-pan-y">
+        {chartData.map((item, index) => {
           const barHeight = isLoading ? 64 : Math.max(16, Math.min(128, Math.round((item.score / 100) * 128)));
+          const isActive = activeBarIndex === index;
 
           return (
-            <div key={item.day} className="flex flex-col items-center gap-3 flex-1 group cursor-pointer">
+            <button
+              key={item.day}
+              type="button"
+              onClick={() => setActiveBarIndex(isActive ? null : index)}
+              onFocus={() => setActiveBarIndex(index)}
+              onMouseLeave={() => setActiveBarIndex((current) => (current === index ? null : current))}
+              aria-label={`${item.day}: skor ${item.score}`}
+              className="flex flex-col items-center gap-3 flex-1 group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7] rounded-[10px] touch-manipulation"
+            >
               {isLoading ? (
                 <Skeleton className="w-full rounded-[8px]" style={{ height: barHeight }} />
               ) : (
                 <div
-                  className={`w-full ${item.is_today ? 'bg-[#8CE0A7]' : 'bg-[#F4F6F5] dark:bg-stone-800 group-hover:bg-[#D5E5DB] dark:group-hover:bg-stone-700'} rounded-[8px] transition-colors duration-300 relative`}
+                  className={`w-full ${item.is_today || isActive ? 'bg-[#8CE0A7]' : 'bg-[#F4F6F5] dark:bg-stone-800 group-hover:bg-[#D5E5DB] dark:group-hover:bg-stone-700'} rounded-[8px] transition-colors duration-300 relative`}
                   style={{ height: barHeight }}
                 >
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#2B4B3D] text-white text-[9px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className={`absolute -top-8 left-1/2 -translate-x-1/2 bg-[#2B4B3D] text-white text-[9px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isActive ? 'opacity-100' : ''}`}>
                     {item.score}
                   </div>
                 </div>
@@ -86,7 +97,7 @@ export default function ActivityChart({
               ) : (
                 <span className={`text-[10px] font-bold ${item.is_today ? 'text-[#2B4B3D] dark:text-[#8CE0A7]' : 'text-[#8CAAB8]'}`}>{item.day}</span>
               )}
-            </div>
+            </button>
           );
         })}
       </div>
