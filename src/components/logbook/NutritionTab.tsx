@@ -55,9 +55,19 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
       const formData = new FormData();
       formData.append('image', selectedFile);
       const apiResult = await vitaraApi.predictFood(formData);
+      const hasDetectedFood = apiResult.foods.length > 0;
+
+      if (!hasDetectedFood) {
+        setPopup({
+          isOpen: true,
+          type: 'info',
+          title: 'Makanan Tidak Ditemukan',
+          message: 'Hmm, Vee tidak menemukan makanan di gambar ini. Coba pilih foto lain atau masukkan secara manual ya!',
+        });
+      }
 
       setResult({
-        name: apiResult.foods.length > 0 ? apiResult.foods.join(', ') : 'Makanan Tidak Dikenali',
+        name: hasDetectedFood ? apiResult.foods.join(', ') : 'Makanan Tidak Dikenali',
         tags: ['Makanan AI Terdeteksi', mealTimeRef.current],
         calories: apiResult.estimatedCalories,
         macros: { protein: Math.round(apiResult.estimatedCalories * 0.05), carbs: Math.round(apiResult.estimatedCalories * 0.12), fat: Math.round(apiResult.estimatedCalories * 0.03) }
@@ -109,7 +119,7 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
         ))}
       </div>
 
-      <input type="file" accept="image/jpeg, image/png" ref={fileInputRef} onChange={(e) => { void handleFileChange(e); }} className="hidden" />
+      <input type="file" accept="image/*" ref={fileInputRef} onChange={(e) => { void handleFileChange(e); }} className="hidden" />
 
       {!file ? (
         <div onClick={() => fileInputRef.current?.click()} className="bg-white dark:bg-[#1A1D1B] border-2 border-dashed border-[#D1D9D5] dark:border-stone-700 rounded-[28px] p-8 flex flex-col items-center justify-center text-center cursor-pointer min-h-[300px] shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:bg-[#F4F6F5] dark:hover:bg-stone-800/50 transition-all duration-300 group relative">
