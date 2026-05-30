@@ -1,5 +1,5 @@
 // src/components/dashboard/VeeStatusWidget.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Activity, Info, CloudOff } from 'lucide-react';
 import VeeMascot from '@/components/mascot/VeeMascot';
 import { VeeHealthStatus } from '@/store/useStore';
@@ -31,18 +31,49 @@ export default function VeeStatusWidget({
 }: VeeStatusWidgetProps) {
   const [eyePosition, setEyePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isVeeBooped, setIsVeeBooped] = useState<boolean>(false);
+  const boopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const eyeRafRef = useRef<number | null>(null);
+  const pendingEyePositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   useEffect(() => {
     const handleEyeMove = (e: MouseEvent) => {
-      setEyePosition({ x: (e.clientX / window.innerWidth - 0.5) * 6, y: (e.clientY / window.innerHeight - 0.5) * 6 });
+      pendingEyePositionRef.current = {
+        x: (e.clientX / window.innerWidth - 0.5) * 6,
+        y: (e.clientY / window.innerHeight - 0.5) * 6,
+      };
+
+      if (eyeRafRef.current !== null) return;
+
+      eyeRafRef.current = window.requestAnimationFrame(() => {
+        setEyePosition(pendingEyePositionRef.current);
+        eyeRafRef.current = null;
+      });
     };
+
     window.addEventListener('mousemove', handleEyeMove);
-    return () => window.removeEventListener('mousemove', handleEyeMove);
+    return () => {
+      window.removeEventListener('mousemove', handleEyeMove);
+      if (eyeRafRef.current !== null) {
+        window.cancelAnimationFrame(eyeRafRef.current);
+        eyeRafRef.current = null;
+      }
+    };
   }, []);
 
   const handleVeeClick = () => {
-    setIsVeeBooped(true); setTimeout(() => setIsVeeBooped(false), 300);
+    setIsVeeBooped(true);
+    if (boopTimeoutRef.current) clearTimeout(boopTimeoutRef.current);
+    boopTimeoutRef.current = setTimeout(() => {
+      setIsVeeBooped(false);
+      boopTimeoutRef.current = null;
+    }, 300);
   };
+
+  useEffect(() => {
+    return () => {
+      if (boopTimeoutRef.current) clearTimeout(boopTimeoutRef.current);
+    };
+  }, []);
 
   const healthData: Record<VeeHealthStatus, StatusData> = {
     fresh: { score: 85, text: 'Sehat & Senang', color: 'text-[#1DB38A] bg-[#E6F7ED] dark:text-[#8CE0A7] dark:bg-[#1A2620]', advice: 'Vee kelihatan sangat sehat hari ini! Terus pertahankan rutinitas baikmu.', glow: 'rgba(140, 224, 167, 0.4)' },

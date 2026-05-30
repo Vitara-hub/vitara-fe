@@ -1,5 +1,12 @@
 // src/hooks/useVeePhysics.ts
-import { useRef, useState, useEffect, RefObject, PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useRef,
+  useState,
+  useEffect,
+  RefObject,
+  MutableRefObject,
+  PointerEvent as ReactPointerEvent,
+} from 'react';
 
 // 1. Interface Ketat untuk Return Value
 export interface VeePhysicsReturn {
@@ -52,14 +59,32 @@ export default function useVeePhysics(): VeePhysicsReturn {
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const boopCount = useRef<number>(0);
   const boopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const boopAnimationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dizzyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimer = (timerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>) => {
+    if (!timerRef.current) return;
+    clearTimeout(timerRef.current);
+    timerRef.current = null;
+  };
 
   const resetIdleTimer = () => {
     setIsSleeping(false);
-    if (idleTimer.current) clearTimeout(idleTimer.current);
+    clearTimer(idleTimer);
     idleTimer.current = setTimeout(() => {
       setIsSleeping(true);
     }, 15000);
   };
+
+  useEffect(() => {
+    return () => {
+      clearTimer(petTimeoutRef);
+      clearTimer(idleTimer);
+      clearTimer(boopTimer);
+      clearTimer(boopAnimationTimer);
+      clearTimer(dizzyTimer);
+    };
+  }, []);
 
   useEffect(() => {
     window.addEventListener('mousemove', resetIdleTimer);
@@ -68,7 +93,7 @@ export default function useVeePhysics(): VeePhysicsReturn {
     return () => {
       window.removeEventListener('mousemove', resetIdleTimer);
       window.removeEventListener('keydown', resetIdleTimer);
-      if (idleTimer.current) clearTimeout(idleTimer.current);
+      clearTimer(idleTimer);
     };
   }, []);
 
@@ -270,7 +295,7 @@ export default function useVeePhysics(): VeePhysicsReturn {
       petCounter.current += 1;
       if (petCounter.current > 8) {
         if (!isVeeTickled) setIsVeeTickled(true);
-        if (petTimeoutRef.current) clearTimeout(petTimeoutRef.current);
+        clearTimer(petTimeoutRef);
         petTimeoutRef.current = setTimeout(() => {
           setIsVeeTickled(false);
           petCounter.current = 0;
@@ -293,19 +318,24 @@ export default function useVeePhysics(): VeePhysicsReturn {
       setIsMouseDown(false);
       setIsVeeTickled(false);
       petCounter.current = 0;
-      if (petTimeoutRef.current) clearTimeout(petTimeoutRef.current);
+      clearTimer(petTimeoutRef);
     },
     onClick: () => {
       boopCount.current += 1;
-      if (boopTimer.current) clearTimeout(boopTimer.current);
+      clearTimer(boopTimer);
       
       boopTimer.current = setTimeout(() => { boopCount.current = 0; }, 1000);
       if (boopCount.current > 7) {
         setIsDizzy(true);
-        setTimeout(() => { setIsDizzy(false); boopCount.current = 0; }, 4000);
+        clearTimer(dizzyTimer);
+        dizzyTimer.current = setTimeout(() => {
+          setIsDizzy(false);
+          boopCount.current = 0;
+        }, 4000);
       } else {
         setIsVeeBooped(true);
-        setTimeout(() => setIsVeeBooped(false), 300);
+        clearTimer(boopAnimationTimer);
+        boopAnimationTimer.current = setTimeout(() => setIsVeeBooped(false), 300);
       }
     }
   };
