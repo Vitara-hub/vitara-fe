@@ -2,6 +2,8 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import {
   clearAuthTokens,
+  getAccessToken,
+  getRefreshToken,
   setAuthTokens,
 } from '@/services/authSession';
 import { mapActivityFeed } from '@/utils/activityMapper';
@@ -20,19 +22,25 @@ import type {
   DailyHealthSnapshot,
   DashboardTodayResponse,
   FoodAnalyzeResponse,
+  FoodLogItem,
   GoogleAuthCallbackRequest,
   GoogleAuthResponse,
   HealthScoreResponse,
+  JournalLogItem,
   JournalRequest,
   JournalResponse,
   LoginRequest,
   LoginResponse,
+  ManualFoodLogRequest,
+  PaginatedResponse,
   ProfileResponse,
   ProfileUpdateRequest,
   SignupRequest,
+  SleepLogItem,
   SleepAnalyzeRequest,
   SleepRequest,
   SleepResponse,
+  TypingSessionItem,
   TypingRequest,
   TypingResponse,
 } from '@/types/api';
@@ -110,10 +118,12 @@ function toChatStreamChunk(raw: unknown): ChatStreamChunk {
 }
 
 async function refreshAccessToken(): Promise<void> {
-  // Rely on HttpOnly cookie for refresh token
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) throw new Error('Missing refresh token.');
+
   const response = await axios.post<ApiEnvelope<AuthTokensResponse>>(
     API_URL === '/' ? '/api/auth/refresh' : `${API_URL}/api/auth/refresh`,
-    {},
+    { refreshToken },
     { headers: { 'Content-Type': 'application/json' }, timeout: 10000, withCredentials: true },
   );
 
@@ -125,7 +135,14 @@ export function ensureValidAccessToken(): Promise<void> {
   return Promise.resolve();
 }
 
-apiClient.interceptors.request.use((config) => config);
+apiClient.interceptors.request.use((config) => {
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  return config;
+});
 
 apiClient.interceptors.response.use(
   (response) => response,
@@ -170,6 +187,10 @@ function toFoodFormData(imageOrFormData: File | FormData): FormData {
 }
 
 function unwrap<T>(envelope: ApiEnvelope<T>): T {
+  if (envelope.status === 'error') {
+    throw new Error(envelope.message);
+  }
+
   return envelope.data;
 }
 
@@ -180,7 +201,7 @@ function mapHealthScore(data: {
   insightSummary?: string | null;
 }): HealthScoreResponse {
   return {
-    health_score: data.healthScore,
+    healthScore: data.healthScore,
     breakdown: data.breakdown,
     snapshotDate: data.snapshotDate,
     insightSummary: data.insightSummary,
@@ -194,7 +215,7 @@ export function resetChatSession() {
 async function resolveChatSessionId(): Promise<string> {
   if (chatSessionId) return chatSessionId;
 
-  const sessions = await vitaraApi.listChatSessions(1);
+  const sessions = await vitaraApi.listChatSessions({ limit: 1 });
   if (sessions.length > 0) {
     chatSessionId = sessions[0].id;
     return chatSessionId;
@@ -265,17 +286,36 @@ export const vitaraApi = {
 
   predictJournal: async (data: JournalRequest): Promise<JournalResponse> => {
     const response = await apiClient.post<ApiEnvelope<{
+      entryId: string;
       emotion: string;
       stressLevel: number;
       topics: string[];
+      createdAt: string;
     }>>('/api/journal/analyze', data);
     const result = unwrap(response.data);
 
     return {
+      entryId: result.entryId,
       emotion: result.emotion,
-      stress_level: result.stressLevel,
+      stressLevel: result.stressLevel,
       topics: result.topics,
+      createdAt: result.createdAt,
     };
+  },
+
+  getJournalLogs: async (
+    params?: { limit?: number; cursor?: string },
+  ): Promise<PaginatedResponse<JournalLogItem>> => {
+    const response = await apiClient.get<ApiEnvelope<PaginatedResponse<JournalLogItem>>>(
+      '/api/journal',
+      { params },
+    );
+    return unwrap(response.data);
+  },
+
+  createManualFoodLog: async (data: ManualFoodLogRequest): Promise<FoodLogItem> => {
+    const response = await apiClient.post<ApiEnvelope<FoodLogItem>>('/api/food', data);
+    return unwrap(response.data);
   },
 
   predictFood: async (imageOrFormData: File | FormData): Promise<FoodAnalyzeResponse> => {
@@ -293,9 +333,19 @@ export const vitaraApi = {
     return {
       entryId: result.entryId,
       foods: result.foods,
-      estimated_calories: result.estimatedCalories,
+      estimatedCalories: result.estimatedCalories,
       imageUrl: result.imageUrl,
     };
+  },
+
+  getFoodLogs: async (
+    params?: { date?: string; limit?: number; cursor?: string },
+  ): Promise<PaginatedResponse<FoodLogItem>> => {
+    const response = await apiClient.get<ApiEnvelope<PaginatedResponse<FoodLogItem>>>(
+      '/api/food',
+      { params },
+    );
+    return unwrap(response.data);
   },
 
   predictSleep: async (data: SleepAnalyzeRequest | SleepRequest): Promise<SleepResponse> => {
@@ -308,34 +358,60 @@ export const vitaraApi = {
           interruptions: data.interruptions,
         };
 
-    const response = await apiClient.post<ApiEnvelope<{ qualityScore?: number; quality_score?: number }>>(
+    const response = await apiClient.post<ApiEnvelope<{
+      entryId: string;
+      durationHours: number;
+      qualityScore: number;
+    }>>(
       '/api/sleep/analyze',
       body,
     );
     const result = unwrap(response.data);
-    const qualityScore = result.qualityScore ?? result.quality_score;
 
     return {
-      quality_score: qualityScore ?? 0,
+      entryId: result.entryId,
+      durationHours: result.durationHours,
+      qualityScore: result.qualityScore,
     };
   },
 
+  getSleepLogs: async (
+    params?: { date?: string; limit?: number; cursor?: string },
+  ): Promise<PaginatedResponse<SleepLogItem>> => {
+    const response = await apiClient.get<ApiEnvelope<PaginatedResponse<SleepLogItem>>>(
+      '/api/sleep',
+      { params },
+    );
+    return unwrap(response.data);
+  },
+
   predictTyping: async (data: TypingRequest): Promise<TypingResponse> => {
-    const response = await apiClient.post<ApiEnvelope<{ stressScore: number }>>(
+    const response = await apiClient.post<ApiEnvelope<{ sessionId: string; stressScore: number }>>(
       '/api/typing/analyze',
       {
         wpm: data.wpm,
-        duration: data.duration ?? Math.max(1, Math.round(data.inter_key_timings.length / 5)),
-        textContent: data.text_content ?? 'Typing telemetry',
-        backspaceRate: data.backspace_rate,
-        interKeyTimings: data.inter_key_timings,
+        duration: data.duration ?? Math.max(1, Math.round(data.interKeyTimings.length / 5)),
+        textContent: data.textContent ?? 'Typing telemetry',
+        backspaceRate: data.backspaceRate,
+        interKeyTimings: data.interKeyTimings,
       },
     );
     const result = unwrap(response.data);
 
     return {
-      stress_score: result.stressScore,
+      sessionId: result.sessionId,
+      stressScore: result.stressScore,
     };
+  },
+
+  getTypingSessions: async (
+    params?: { date?: string; limit?: number; cursor?: string },
+  ): Promise<PaginatedResponse<TypingSessionItem>> => {
+    const response = await apiClient.get<ApiEnvelope<PaginatedResponse<TypingSessionItem>>>(
+      '/api/typing',
+      { params },
+    );
+    return unwrap(response.data);
   },
 
   computeHealth: async (): Promise<HealthScoreResponse> => {
@@ -348,8 +424,10 @@ export const vitaraApi = {
     return mapHealthScore(unwrap(response.data));
   },
 
-  getHealthDaily: async (): Promise<DailyHealthSnapshot[]> => {
-    const response = await apiClient.get<ApiEnvelope<DailyHealthSnapshot[]>>('/api/health/daily');
+  getHealthDaily: async (params?: { from?: string; to?: string }): Promise<DailyHealthSnapshot[]> => {
+    const response = await apiClient.get<ApiEnvelope<DailyHealthSnapshot[]>>('/api/health/daily', {
+      params,
+    });
     return unwrap(response.data);
   },
 
@@ -365,10 +443,12 @@ export const vitaraApi = {
     return unwrap(response.data);
   },
 
-  getActivityRecent: async (limit = 20): Promise<ActivityRecentItem[]> => {
+  getActivityRecent: async (
+    params: { limit?: number; cursor?: string } = {},
+  ): Promise<ActivityRecentItem[]> => {
     const response = await apiClient.get<ApiEnvelope<{ items: ActivityRecentItem[] }>>(
       '/api/activity/recent',
-      { params: { limit } },
+      { params },
     );
     return unwrap(response.data).items;
   },
@@ -376,7 +456,7 @@ export const vitaraApi = {
   getActivityFeed: async (period: '7d' | '30d' = '7d'): Promise<ActivityDataResponse> => {
     const [daily, recent, summary] = await Promise.all([
       vitaraApi.getHealthDaily(),
-      vitaraApi.getActivityRecent(20),
+      vitaraApi.getActivityRecent({ limit: 20 }),
       vitaraApi.getActivitySummary(period),
     ]);
 
@@ -388,31 +468,42 @@ export const vitaraApi = {
     return unwrap(response.data);
   },
 
-  listChatSessions: async (limit = 20): Promise<ChatSession[]> => {
+  listChatSessions: async (
+    params: { limit?: number; cursor?: string } = {},
+  ): Promise<ChatSession[]> => {
     const response = await apiClient.get<ApiEnvelope<{ items: ChatSession[] }>>(
       '/api/chat/sessions',
-      { params: { limit } },
+      { params },
     );
     return unwrap(response.data).items;
   },
 
-  listChatMessages: async (sessionId: string, limit = 50): Promise<ChatMessageItem[]> => {
+  listChatMessages: async (
+    sessionId: string,
+    params: { limit?: number; cursor?: string } = {},
+  ): Promise<ChatMessageItem[]> => {
     const response = await apiClient.get<ApiEnvelope<{ items: ChatMessageItem[] }>>(
       '/api/chat/messages',
-      { params: { sessionId, limit } },
+      { params: { sessionId, ...params } },
     );
     return unwrap(response.data).items;
   },
 
   sendChatMessage: async (data: ChatRequest, onChunk?: (text: string) => void): Promise<ChatResponse> => {
     const sessionId = data.sessionId ?? (await resolveChatSessionId());
+    const accessToken = getAccessToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
 
     const fetchUrl = API_URL === '/' ? '/api/chat/messages' : `${API_URL}/api/chat/messages`;
     const response = await fetch(fetchUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       credentials: "include",
       body: JSON.stringify({
         sessionId,
@@ -444,34 +535,60 @@ export const vitaraApi = {
     const decoder = new TextDecoder("utf-8");
     let fullText = "";
     let recommendations: string[] = [];
+    let buffer = "";
+
+    const processEvent = (eventText: string) => {
+      const dataLines = eventText
+        .split(/\r?\n/)
+        .map((line) => line.trimEnd())
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trim());
+
+      if (dataLines.length === 0) return;
+
+      const dataStr = dataLines.join("\n").trim();
+      if (!dataStr || dataStr === "[DONE]") return;
+
+      try {
+        const parsed = toChatStreamChunk(JSON.parse(dataStr) as unknown);
+        if (parsed.token) {
+          fullText += parsed.token;
+          onChunk?.(fullText);
+        }
+
+        if (parsed.full_response) {
+          fullText = parsed.full_response;
+          onChunk?.(fullText);
+        }
+
+        if (isStringArray(parsed.recommendations)) {
+          recommendations = parsed.recommendations;
+        }
+      } catch {
+        // Ignore malformed completed events and continue streaming.
+      }
+    };
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split("\n").filter((line) => line.startsWith("data:"));
-      for (const line of lines) {
-        const dataStr = line.slice(5).trim();
-        if (dataStr) {
-          try {
-            const parsed = toChatStreamChunk(JSON.parse(dataStr) as unknown);
-            if (parsed.token) {
-              fullText += parsed.token;
-              onChunk?.(fullText);
-            } else if (parsed.full_response) {
-              fullText = parsed.full_response;
-              onChunk?.(fullText);
-            }
-
-            if (isStringArray(parsed.recommendations)) {
-              recommendations = parsed.recommendations;
-            }
-          } catch {
-            // Ignore malformed partial chunks and continue streaming.
-          }
-        }
+      if (done) {
+        buffer += decoder.decode();
+        break;
       }
+
+      buffer += decoder.decode(value, { stream: true });
+      buffer = buffer.replace(/\r\n/g, "\n");
+
+      const events = buffer.split("\n\n");
+      buffer = events.pop() ?? "";
+
+      for (const eventText of events) {
+        processEvent(eventText);
+      }
+    }
+
+    if (buffer.trim()) {
+      processEvent(buffer);
     }
 
     return {
@@ -483,7 +600,7 @@ export const vitaraApi = {
 
   loadChatHistory: async (): Promise<{ sessionId: string; messages: ChatMessageItem[] }> => {
     const sessionId = await resolveChatSessionId();
-    const items = await vitaraApi.listChatMessages(sessionId, 50);
+    const items = await vitaraApi.listChatMessages(sessionId, { limit: 50 });
     return { sessionId, messages: items.reverse() };
   },
 

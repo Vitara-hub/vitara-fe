@@ -52,12 +52,12 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
         interruptions
       });
 
-      const nextHealth: VeeHealthStatus = response.quality_score >= 70 ? 'fresh' : 'tired';
+      const nextHealth: VeeHealthStatus = response.qualityScore >= 70 ? 'fresh' : 'tired';
       setResultHealth(nextHealth);
       setVeeHealth(nextHealth);
 
-      updateMetric('sleep', { quality_score: response.quality_score });
-      addLog({ type: 'sleep', summary: `Tidur ${dur.h}j ${dur.m}m (Skor: ${response.quality_score})`, qualityScore: response.quality_score, syncStatus: 'synced' });
+      updateMetric('sleep', { qualityScore: response.qualityScore });
+      addLog({ type: 'sleep', summary: `Tidur ${dur.h}j ${dur.m}m (Skor: ${response.qualityScore})`, qualityScore: response.qualityScore, syncStatus: 'synced' });
 
     } catch (error) {
       // 🚀 OFFLINE FIRST: Tidak ada tebakan skor tidur.

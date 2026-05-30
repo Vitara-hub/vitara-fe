@@ -86,9 +86,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       if (!isLoginView) {
+        const emailValue = email.trim();
+        const fallbackName = emailValue.split('@')[0] || 'vitara-user';
+
         await vitaraApi.signup({
-          fullName: fullName.trim() || undefined,
-          email: email.trim(),
+          username: fallbackName,
+          fullName: fullName.trim() || fallbackName,
+          email: emailValue,
           password,
         });
       }

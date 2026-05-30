@@ -1,15 +1,22 @@
 // src/types/api.ts
 
 export interface ApiErrorResponse {
+  status?: 'error';
   detail?: string;
   message?: string;
 }
 
-export interface ApiEnvelope<T> {
-  status: 'success' | 'error';
+export interface ApiSuccessEnvelope<T> {
+  status: 'success';
   data: T;
-  message?: string;
 }
+
+export interface ApiErrorEnvelope {
+  status: 'error';
+  message: string;
+}
+
+export type ApiEnvelope<T> = ApiSuccessEnvelope<T> | ApiErrorEnvelope;
 
 export interface LoginRequest {
   email: string;
@@ -30,6 +37,7 @@ export interface AuthMeResponse {
   email: string | null;
   fullName: string | null;
   timezone: string;
+  imageUrl: string | null;
 }
 
 export type GoogleAuthCallbackRequest =
@@ -37,8 +45,8 @@ export type GoogleAuthCallbackRequest =
   | { accessToken: string; refreshToken: string };
 
 export interface SignupRequest {
-  username?: string;
-  fullName?: string;
+  username: string;
+  fullName: string;
   email: string;
   password: string;
 }
@@ -52,20 +60,45 @@ export interface JournalRequest {
 }
 
 export interface JournalResponse {
+  entryId: string;
   emotion: string;
-  stress_level: number;
+  stressLevel: number;
   topics: string[];
+  createdAt: string;
 }
 
 export interface FoodAnalyzeResponse {
   entryId: string;
   foods: string[];
-  estimated_calories: number;
+  estimatedCalories: number;
   imageUrl?: string | null;
 }
 
 /** @deprecated use FoodAnalyzeResponse */
-export type FoodResponse = Pick<FoodAnalyzeResponse, 'foods' | 'estimated_calories'>;
+export type FoodResponse = Pick<FoodAnalyzeResponse, 'foods' | 'estimatedCalories'>;
+
+export interface ManualFoodLogRequest {
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  consumedAt: string;
+}
+
+export interface FoodLogItem {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  source: 'manual' | 'image' | string;
+  consumedAt: string;
+  createdAt: string;
+  imageUrl: string | null;
+  imagePath: string | null;
+}
 
 export interface SleepAnalyzeRequest {
   sleepTime: string;
@@ -84,19 +117,44 @@ export interface SleepRequest {
 }
 
 export interface SleepResponse {
-  quality_score: number;
+  entryId: string;
+  durationHours: number;
+  qualityScore: number;
+}
+
+export interface SleepLogItem {
+  id: string;
+  sleepTime: string;
+  wakeTime: string;
+  interruptions: number;
+  notes?: string | null;
+  durationHours: number;
+  qualityScore: number;
+  createdAt: string;
 }
 
 export interface TypingRequest {
   wpm: number;
-  backspace_rate: number;
-  inter_key_timings: number[];
+  backspaceRate: number;
+  interKeyTimings: number[];
   duration?: number;
-  text_content?: string;
+  textContent?: string;
 }
 
 export interface TypingResponse {
-  stress_score: number;
+  sessionId: string;
+  stressScore: number;
+}
+
+export interface TypingSessionItem {
+  id: string;
+  wpm: number;
+  duration: number;
+  textContent: string | null;
+  backspaceRate: number;
+  interKeyTimings: number[];
+  stressScore: number;
+  createdAt: string;
 }
 
 export interface HealthBreakdown {
@@ -107,7 +165,7 @@ export interface HealthBreakdown {
 }
 
 export interface HealthScoreResponse {
-  health_score: number;
+  healthScore: number;
   breakdown: HealthBreakdown;
   snapshotDate?: string;
   insightSummary?: string | null;
@@ -164,6 +222,21 @@ export interface ProfileResponse {
   email: string | null;
   fullName: string | null;
   timezone: string;
+  imageUrl?: string | null;
+}
+
+export interface JournalLogItem {
+  id: string;
+  text: string;
+  emotion: string;
+  stressLevel: number;
+  topics: string[];
+  createdAt: string;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  nextCursor: string | null;
 }
 
 export interface ProfileUpdateRequest {
@@ -185,7 +258,7 @@ export interface ChatMessageItem {
   sessionId: string;
   role: 'user' | 'assistant';
   content: string;
-  recommendations?: string[];
+  recommendations: string[] | null;
   model?: string | null;
   createdAt: string;
 }

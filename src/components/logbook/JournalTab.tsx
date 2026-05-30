@@ -40,18 +40,18 @@ export default function JournalTab({ jumpDirection, veeHealth, setVeeHealth, wei
     try {
       const [journalResult, typingResult] = await Promise.all([
         vitaraApi.predictJournal({ text }),
-        vitaraApi.predictTyping({ wpm: metrics.wpm, backspace_rate: metrics.backspaceRate, inter_key_timings: metrics.interKeyTimings.length > 0 ? metrics.interKeyTimings : [200] })
+        vitaraApi.predictTyping({ wpm: metrics.wpm, backspaceRate: metrics.backspaceRate, interKeyTimings: metrics.interKeyTimings.length > 0 ? metrics.interKeyTimings : [200] })
       ]);
       
-      const avgStress = (journalResult.stress_level + typingResult.stress_score) / 2;
+      const avgStress = (journalResult.stressLevel + typingResult.stressScore) / 2;
       let newHealth: VeeHealthStatus = 'fresh';
       if (avgStress >= 0.7) newHealth = 'stressed';
       else if (avgStress >= 0.4) newHealth = 'tired';
 
       setVeeHealth(newHealth); 
-      updateMetric('nlp', { emotion: journalResult.emotion, stress_level: journalResult.stress_level });
-      updateMetric('typing', { stress_score: typingResult.stress_score });
-      addLog({ type: 'journal', summary: text.substring(0, 50) + '...', emotion: journalResult.emotion, stressLevel: journalResult.stress_level, syncStatus: 'synced' });
+      updateMetric('nlp', { emotion: journalResult.emotion, stressLevel: journalResult.stressLevel });
+      updateMetric('typing', { stressScore: typingResult.stressScore });
+      addLog({ type: 'journal', summary: text.substring(0, 50) + '...', emotion: journalResult.emotion, stressLevel: journalResult.stressLevel, syncStatus: 'synced' });
 
       setPopup({ isOpen: true, type: 'success', title: 'Analisis Selesai!', message: `Emosi Dominan: ${journalResult.emotion}\nTopik: ${journalResult.topics.join(', ')}` });
 

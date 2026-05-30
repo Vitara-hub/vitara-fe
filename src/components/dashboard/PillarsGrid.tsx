@@ -45,19 +45,19 @@ function PillarCard({ icon, title, value, sub, bg, darkBg, iconColor, delay, isL
 
 interface PillarsGridProps {
   breakdown?: {
-    mood: number;
-    nutrition: number;
-    stress: number;
-    sleep: number;
+    moodLabel: string;
+    stressLabel: string;
+    nutritionKcal: number;
+    sleepHours: number;
   };
   isSyncing: boolean;
 }
 
 export default function PillarsGrid({ breakdown, isSyncing }: PillarsGridProps) {
-  const moodScore = breakdown ? `${Math.round(breakdown.mood)}%` : '--';
-  const stressLevel = breakdown ? `${Math.round(breakdown.stress)}%` : '--';
-  const nutritionVal = breakdown ? Math.round(breakdown.nutrition * 2500) : '--';
-  const sleepVal = breakdown ? (breakdown.sleep * 8 / 100).toFixed(1) : '--';
+  const moodScore = breakdown?.moodLabel ?? '--';
+  const stressLevel = breakdown?.stressLabel ?? '--';
+  const nutritionVal = breakdown ? Math.round(breakdown.nutritionKcal) : '--';
+  const sleepVal = breakdown ? breakdown.sleepHours.toFixed(1) : '--';
 
   return (
     <div className="grid grid-cols-2 gap-4">

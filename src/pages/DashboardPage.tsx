@@ -27,38 +27,42 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
     setDashboardHealthScore,
   } = useStore();
 
-  const healthScoreData = dashboardHealthScore.data;
+  const dashboardData = dashboardHealthScore.data;
   const hasFreshCache = isFresh(dashboardHealthScore.fetchedAt);
   const [isSyncing, setIsSyncing] = useState<boolean>(() => !hasFreshCache);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (hasFreshCache) {
       setIsSyncing(false);
+      setErrorMessage(null);
       return;
     }
 
     let isMounted = true;
 
-    const fetchHealthScore = async () => {
+    const fetchDashboardToday = async () => {
       setIsSyncing(true);
+      setErrorMessage(null);
 
       try {
-        const response = await vitaraApi.computeHealth();
+        const response = await vitaraApi.getDashboardToday();
         if (!isMounted) return;
 
         setDashboardHealthScore(response);
       } catch (error) {
-        console.warn('Health Score API Offline. Waiting state active.', error);
+        console.warn('Dashboard API unavailable. Waiting state active.', error);
         if (!isMounted) return;
 
-        if (!healthScoreData) setDashboardHealthScore(null);
+        if (!dashboardData) setDashboardHealthScore(null);
+        setErrorMessage('Dashboard hari ini belum bisa dimuat. Data terakhir tetap ditampilkan bila tersedia.');
         setVeeState('waiting', veeWeight);
       } finally {
         if (isMounted) setIsSyncing(false);
       }
     };
 
-    fetchHealthScore();
+    void fetchDashboardToday();
 
     return () => {
       isMounted = false;
@@ -66,26 +70,40 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
   }, [
     dashboardHealthScore.fetchedAt,
     hasFreshCache,
-    healthScoreData,
+    dashboardData,
     setDashboardHealthScore,
     setVeeState,
     veeWeight,
   ]);
 
-  const isLoading = isSyncing && !healthScoreData;
+  const isLoading = isSyncing && !dashboardData;
 
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-6 space-y-6">
-      <DashboardHeader user={user} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} isLoading={isLoading} />
+      <DashboardHeader
+        user={user}
+        isDarkMode={isDarkMode}
+        toggleDarkMode={toggleDarkMode}
+        isLoading={isLoading}
+        dateLabel={dashboardData?.dateLabel}
+      />
+
+      {!isLoading && errorMessage && (
+        <div className="bg-[#EEF2F5] dark:bg-[#1A1D20] rounded-[20px] p-4 text-xs font-semibold leading-relaxed text-[#647C73] dark:text-stone-400 border border-[#E8F0EA] dark:border-stone-800">
+          {errorMessage}
+        </div>
+      )}
       
       <VeeStatusWidget 
         veeHealth={veeHealth} 
         veeWeight={veeWeight} 
-        realScore={healthScoreData?.health_score} 
+        realScore={dashboardData?.healthScore}
         isSyncing={isLoading}
+        statusLabel={dashboardData?.statusLabel}
+        suggestion={dashboardData?.suggestion}
       />
 
-      <PillarsGrid breakdown={healthScoreData?.breakdown} isSyncing={isLoading} />
+      <PillarsGrid breakdown={dashboardData?.breakdown} isSyncing={isLoading} />
 
       <div className="h-32 shrink-0 w-full"></div>
     </div>

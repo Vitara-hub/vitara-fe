@@ -23,8 +23,8 @@ export default function ProfileHeader({ user, veeHealth, isLoading = false }: Pr
         <>
           <div className="relative group">
             <div className="w-24 h-24 rounded-[32px] bg-[#E8F0EA] dark:bg-[#1A2620] flex items-center justify-center border-2 border-[#8CE0A7] overflow-hidden shadow-sm">
-              {user?.photoURL ? (
-                <img src={user.photoURL} alt={user.displayName} className="w-full h-full object-cover" />
+              {user?.imageUrl ? (
+                <img src={user.imageUrl} alt={user.displayName} className="w-full h-full object-cover" />
               ) : (
                 <VeeMascot scale={0.7} veeHealth={veeHealth} />
               )}

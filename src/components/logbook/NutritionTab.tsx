@@ -59,8 +59,8 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
       setResult({
         name: apiResult.foods.length > 0 ? apiResult.foods.join(', ') : 'Makanan Tidak Dikenali',
         tags: ['Makanan AI Terdeteksi', mealTimeRef.current],
-        calories: apiResult.estimated_calories,
-        macros: { protein: Math.round(apiResult.estimated_calories * 0.05), carbs: Math.round(apiResult.estimated_calories * 0.12), fat: Math.round(apiResult.estimated_calories * 0.03) }
+        calories: apiResult.estimatedCalories,
+        macros: { protein: Math.round(apiResult.estimatedCalories * 0.05), carbs: Math.round(apiResult.estimatedCalories * 0.12), fat: Math.round(apiResult.estimatedCalories * 0.03) }
       });
     } catch (error) {
       // 🚀 OFFLINE FIRST: Tidak ada tebakan kalori.
@@ -93,7 +93,7 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
     setVeeHealth('fresh'); 
     setSaved(true);
 
-    updateMetric('food', { estimated_calories: result.calories });
+    updateMetric('food', { estimatedCalories: result.calories });
     addLog({ type: 'food', summary: `Makan: ${result.name} (${result.calories} kcal)`, calories: result.calories, foods: result.name.split(', '), syncStatus: 'synced' });
   };
 

@@ -66,7 +66,7 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
                 id: String(item.id || `remote_${index}`),
                 role: item.role === 'assistant' ? 'ai' : 'user',
                 text: item.content,
-                recommendations: item.recommendations,
+                recommendations: item.recommendations ?? undefined,
               }))
             : [getGreetingMessage(veeHealth)];
 

@@ -9,6 +9,7 @@ interface DashboardHeaderProps {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
   isLoading?: boolean;
+  dateLabel?: string;
 }
 
 export default function DashboardHeader({
@@ -16,9 +17,10 @@ export default function DashboardHeader({
   isDarkMode,
   toggleDarkMode,
   isLoading = false,
+  dateLabel,
 }: DashboardHeaderProps) {
   const [greeting, setGreeting] = useState<string>('Halo');
-  const currentDate = new Date().toLocaleDateString('id-ID', {
+  const currentDate = dateLabel || new Date().toLocaleDateString('id-ID', {
     weekday: 'long',
     day: 'numeric',
     month: 'short',
@@ -47,7 +49,7 @@ export default function DashboardHeader({
           <>
             <div className="w-12 h-12 rounded-[20px] bg-white dark:bg-stone-800 overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.03)] shrink-0 group hover:scale-105 transition-transform cursor-pointer">
               <img
-                src={user?.photoURL || `https://api.dicebear.com/7.x/notionists/svg?seed=${user?.name || 'Sarah'}`}
+                src={user?.imageUrl || `https://api.dicebear.com/7.x/notionists/svg?seed=${user?.name || 'Sarah'}`}
                 alt={user?.displayName || 'Profile'}
                 className="group-hover:rotate-6 transition-transform"
               />

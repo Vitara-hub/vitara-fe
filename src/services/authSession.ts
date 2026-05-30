@@ -1,6 +1,8 @@
 // Token storage for backend-proxied auth (no Supabase client in the browser).
 
 const STORAGE_KEYS = {
+  accessToken: 'vitara_access_token',
+  refreshToken: 'vitara_refresh_token',
   expiresAt: 'vitara_token_expires_at',
 } as const;
 
@@ -12,17 +14,27 @@ export interface AuthTokens {
 
 export function setAuthTokens(tokens: AuthTokens): void {
   const expiresAt = Date.now() + tokens.expiresIn * 1000;
+  localStorage.setItem(STORAGE_KEYS.accessToken, tokens.accessToken);
+  localStorage.setItem(STORAGE_KEYS.refreshToken, tokens.refreshToken);
   localStorage.setItem(STORAGE_KEYS.expiresAt, String(expiresAt));
 }
 
 export function clearAuthTokens(): void {
+  localStorage.removeItem(STORAGE_KEYS.accessToken);
+  localStorage.removeItem(STORAGE_KEYS.refreshToken);
   localStorage.removeItem(STORAGE_KEYS.expiresAt);
 }
 
-// Removed getAccessToken and getRefreshToken since they are HttpOnly.
-// We consider auth valid if we have an expiresAt value.
+export function getAccessToken(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.accessToken);
+}
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.refreshToken);
+}
+
 export function hasAuthTokens(): boolean {
-  return Boolean(localStorage.getItem(STORAGE_KEYS.expiresAt));
+  return Boolean(getAccessToken() && getRefreshToken() && localStorage.getItem(STORAGE_KEYS.expiresAt));
 }
 
 export function isAccessTokenExpired(skewMs = 60_000): boolean {

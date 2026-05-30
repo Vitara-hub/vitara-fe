@@ -10,11 +10,20 @@ interface VeeStatusWidgetProps {
   veeWeight: number;
   realScore?: number;
   isSyncing?: boolean;
+  statusLabel?: string;
+  suggestion?: string;
 }
 
 interface StatusData { score: number | string; text: string; color: string; advice: string; glow: string; }
 
-export default function VeeStatusWidget({ veeHealth, veeWeight, realScore, isSyncing = false }: VeeStatusWidgetProps) {
+export default function VeeStatusWidget({
+  veeHealth,
+  veeWeight,
+  realScore,
+  isSyncing = false,
+  statusLabel,
+  suggestion,
+}: VeeStatusWidgetProps) {
   const [eyePosition, setEyePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isVeeBooped, setIsVeeBooped] = useState<boolean>(false);
 
@@ -40,6 +49,8 @@ export default function VeeStatusWidget({ veeHealth, veeWeight, realScore, isSyn
   };
 
   const currentStatus = healthData[veeHealth] || healthData['fresh'];
+  const displayStatusLabel = statusLabel || currentStatus.text;
+  const displaySuggestion = suggestion || currentStatus.advice;
   
   // Jika offline (tidak ada realScore dan status waiting), tampilkan garis putus-putus
   const displayScore = veeHealth === 'waiting' ? '--' : (realScore !== undefined ? Math.round(realScore) : currentStatus.score);
@@ -60,13 +71,13 @@ export default function VeeStatusWidget({ veeHealth, veeWeight, realScore, isSyn
             <h3 className="text-sm font-bold text-[#647C73] dark:text-stone-400 mb-2">Kondisi Vee</h3>
             <div className="flex items-baseline gap-1 mb-2">
               <p className="text-4xl font-black text-[#244135] dark:text-stone-50 leading-none">
-                {displayScore}
-              </p>
+              {displayScore}
+            </p>
               <span className="text-sm font-bold text-[#647C73] dark:text-stone-500">/100</span>
             </div>
             <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold ${currentStatus.color} transition-colors duration-300`}>
               {veeHealth === 'waiting' ? <CloudOff size={12} strokeWidth={3} /> : <Activity size={12} strokeWidth={3} />} 
-              {currentStatus.text}
+              {displayStatusLabel}
             </div>
           </div>
         )}
@@ -99,7 +110,7 @@ export default function VeeStatusWidget({ veeHealth, veeWeight, realScore, isSyn
             </div>
             <div className="flex-1">
               <p className="text-[#244135] dark:text-stone-200 text-sm font-bold mb-0.5">{veeHealth === 'waiting' ? 'Status Offline' : 'Saran Vee'}</p>
-              <p className="text-[#647C73] dark:text-stone-400 text-xs font-medium leading-relaxed">{currentStatus.advice}</p>
+              <p className="text-[#647C73] dark:text-stone-400 text-xs font-medium leading-relaxed">{displaySuggestion}</p>
             </div>
           </>
         )}

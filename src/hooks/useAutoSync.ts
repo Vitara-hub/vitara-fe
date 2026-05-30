@@ -33,7 +33,7 @@ export const useAutoSync = () => {
                       ...item,
                       syncStatus: 'synced',
                       emotion: response.emotion,
-                      stressLevel: response.stress_level,
+                      stressLevel: response.stressLevel,
                       summary: item.summary.replace(' (Menunggu Sync)', ''),
                     }
                   : item
@@ -41,7 +41,7 @@ export const useAutoSync = () => {
               isServerDown: false,
             }));
 
-            store.updateMetric('nlp', { emotion: response.emotion, stress_level: response.stress_level });
+            store.updateMetric('nlp', { emotion: response.emotion, stressLevel: response.stressLevel });
           } catch (error) {
             console.error(`Gagal sinkronisasi log ${log.id}, server mati!`, error);
             useStore.getState().setServerDown(true);

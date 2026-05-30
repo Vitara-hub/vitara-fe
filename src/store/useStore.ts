@@ -11,7 +11,7 @@ import {
 } from '@/services/authSession';
 import { isApiConfigured, resetChatSession, vitaraApi } from '@/services/api';
 import type { AuthMeResponse, AuthTokensResponse } from '@/types/api';
-import type { ActivityDataResponse, ChatHistoryMessage, HealthScoreResponse } from '@/types/api';
+import type { ActivityDataResponse, ChatHistoryMessage, DashboardTodayResponse } from '@/types/api';
 
 export interface BaseActivityLog { 
   id: number; 
@@ -34,10 +34,10 @@ export type NewActivityLog =
   | Omit<ChatLog, 'id' | 'timestamp'>;
 
 export interface LatestMetrics {
-  nlp: { emotion: string; stress_level: number } | null;
-  food: { estimated_calories: number } | null;
-  sleep: { quality_score: number } | null;
-  typing: { stress_score: number } | null;
+  nlp: { emotion: string; stressLevel: number } | null;
+  food: { estimatedCalories: number } | null;
+  sleep: { qualityScore: number } | null;
+  typing: { stressScore: number } | null;
 }
 
 export interface CacheEntry<T> {
@@ -49,7 +49,7 @@ export interface AuthUser {
   uid: string;
   email: string;
   displayName: string;
-  photoURL: string;
+  imageUrl: string | null;
   name: string;
 }
 
@@ -64,7 +64,7 @@ function mapProfileUser(profile: AuthMeResponse): AuthUser {
     uid: profile.id,
     email: profile.email || '',
     displayName,
-    photoURL: '',
+    imageUrl: profile.imageUrl,
     name: displayName,
   };
 }
@@ -95,7 +95,7 @@ function getLoggedOutState() {
     user: null,
     activityHistory: [],
     latestMetrics: { nlp: null, food: null, sleep: null, typing: null },
-    dashboardHealthScore: emptyCacheEntry<HealthScoreResponse>(),
+    dashboardHealthScore: emptyCacheEntry<DashboardTodayResponse>(),
     activityData: emptyCacheEntry<ActivityDataResponse>(),
     chatMessages: emptyCacheEntry<ChatHistoryMessage[]>(),
     veeHealth: 'fresh' as VeeHealthStatus,
@@ -187,10 +187,10 @@ interface StoreState {
 
   latestMetrics: LatestMetrics;
   updateMetric: <K extends keyof LatestMetrics>(key: K, data: LatestMetrics[K]) => void;
-  dashboardHealthScore: CacheEntry<HealthScoreResponse>;
+  dashboardHealthScore: CacheEntry<DashboardTodayResponse>;
   activityData: CacheEntry<ActivityDataResponse>;
   chatMessages: CacheEntry<ChatHistoryMessage[]>;
-  setDashboardHealthScore: (data: HealthScoreResponse | null) => void;
+  setDashboardHealthScore: (data: DashboardTodayResponse | null) => void;
   setActivityData: (data: ActivityDataResponse | null) => void;
   setChatMessages: (data: ChatHistoryMessage[] | null) => void;
   clearCachedPageData: () => void;
@@ -309,7 +309,7 @@ const useStore = create<StoreState>()(
         chatMessages: { data, fetchedAt: data ? Date.now() : null },
       }),
       clearCachedPageData: () => set({
-        dashboardHealthScore: emptyCacheEntry<HealthScoreResponse>(),
+        dashboardHealthScore: emptyCacheEntry<DashboardTodayResponse>(),
         activityData: emptyCacheEntry<ActivityDataResponse>(),
         chatMessages: emptyCacheEntry<ChatHistoryMessage[]>(),
       }),
