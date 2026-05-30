@@ -55,19 +55,24 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
       const formData = new FormData();
       formData.append('image', selectedFile);
       const apiResult = await vitaraApi.predictFood(formData);
-      const hasDetectedFood = apiResult.foods.length > 0;
+      const hasDetectedFood = apiResult.foods.length > 0 && apiResult.estimatedCalories > 0;
 
       if (!hasDetectedFood) {
+        setFile(null);
+        setResult(null);
+        setSaved(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
         setPopup({
           isOpen: true,
           type: 'info',
           title: 'Makanan Tidak Ditemukan',
           message: 'Hmm, Vee tidak menemukan makanan di gambar ini. Coba pilih foto lain atau masukkan secara manual ya!',
         });
+        return;
       }
 
       setResult({
-        name: hasDetectedFood ? apiResult.foods.join(', ') : 'Makanan Tidak Dikenali',
+        name: apiResult.foods.join(', '),
         tags: ['Makanan AI Terdeteksi', mealTimeRef.current],
         calories: apiResult.estimatedCalories,
         macros: { protein: Math.round(apiResult.estimatedCalories * 0.05), carbs: Math.round(apiResult.estimatedCalories * 0.12), fat: Math.round(apiResult.estimatedCalories * 0.03) }
