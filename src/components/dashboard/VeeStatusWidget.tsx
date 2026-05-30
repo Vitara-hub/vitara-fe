@@ -16,6 +16,11 @@ interface VeeStatusWidgetProps {
 
 interface StatusData { score: number | string; text: string; color: string; advice: string; glow: string; }
 
+function toDisplayScore(value: number | undefined, fallback: number | string) {
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.round(value);
+  return fallback;
+}
+
 export default function VeeStatusWidget({
   veeHealth,
   veeWeight,
@@ -53,7 +58,7 @@ export default function VeeStatusWidget({
   const displaySuggestion = suggestion || currentStatus.advice;
   
   // Jika offline (tidak ada realScore dan status waiting), tampilkan garis putus-putus
-  const displayScore = veeHealth === 'waiting' ? '--' : (realScore !== undefined ? Math.round(realScore) : currentStatus.score);
+  const displayScore = veeHealth === 'waiting' ? '--' : toDisplayScore(realScore, currentStatus.score);
 
   return (
     <div className="space-y-6">

@@ -47,8 +47,8 @@ interface PillarsGridProps {
   breakdown?: {
     moodLabel: string;
     stressLabel: string;
-    nutritionKcal: number;
-    sleepHours: number;
+    nutritionKcal?: number;
+    sleepHours?: number;
   };
   isSyncing: boolean;
 }
@@ -56,8 +56,8 @@ interface PillarsGridProps {
 export default function PillarsGrid({ breakdown, isSyncing }: PillarsGridProps) {
   const moodScore = breakdown?.moodLabel ?? '--';
   const stressLevel = breakdown?.stressLabel ?? '--';
-  const nutritionVal = breakdown ? Math.round(breakdown.nutritionKcal) : '--';
-  const sleepVal = breakdown ? breakdown.sleepHours.toFixed(1) : '--';
+  const nutritionVal = breakdown ? Math.round(breakdown?.nutritionKcal ?? 0) : '--';
+  const sleepVal = breakdown ? (breakdown?.sleepHours ?? 0).toFixed(1) : '--';
 
   return (
     <div className="grid grid-cols-2 gap-4">
