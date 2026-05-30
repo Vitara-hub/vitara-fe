@@ -47,6 +47,7 @@ export interface CacheEntry<T> {
 
 export interface AuthUser {
   uid: string;
+  username: string;
   email: string;
   displayName: string;
   imageUrl: string | null;
@@ -62,6 +63,7 @@ function mapProfileUser(profile: AuthMeResponse): AuthUser {
 
   return {
     uid: profile.id,
+    username: profile.username || '',
     email: profile.email || '',
     displayName,
     imageUrl: profile.imageUrl,

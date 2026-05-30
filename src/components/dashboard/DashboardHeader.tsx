@@ -25,6 +25,9 @@ export default function DashboardHeader({
     day: 'numeric',
     month: 'short',
   });
+  const avatarSeed = encodeURIComponent(user?.username || user?.email || user?.uid || 'vitara-user');
+  const avatarSrc = user?.imageUrl?.trim() || `https://api.dicebear.com/7.x/notionists/svg?seed=${avatarSeed}`;
+  const avatarAlt = `${user?.username || user?.displayName || 'Vitara user'}'s avatar`;
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -49,8 +52,8 @@ export default function DashboardHeader({
           <>
             <div className="w-12 h-12 rounded-[20px] bg-white dark:bg-stone-800 overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.03)] shrink-0 group hover:scale-105 transition-transform cursor-pointer">
               <img
-                src={user?.imageUrl || `https://api.dicebear.com/7.x/notionists/svg?seed=${user?.name || 'Sarah'}`}
-                alt={user?.displayName || 'Profile'}
+                src={avatarSrc}
+                alt={avatarAlt}
                 className="group-hover:rotate-6 transition-transform"
               />
             </div>

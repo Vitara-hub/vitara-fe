@@ -21,7 +21,7 @@ const closedAlert: ProfileAlertState = {
 };
 
 export default function ProfilePage() {
-  const { user, veeHealth, logout } = useStore();
+  const { user, logout } = useStore();
   const [alertConfig, setAlertConfig] = useState<ProfileAlertState>(closedAlert);
   const [isDeletingData, setIsDeletingData] = useState<boolean>(false);
   const isLoading = false;
@@ -86,7 +86,7 @@ export default function ProfilePage() {
   return (
     <div className="flex-1 flex flex-col w-full bg-[#FAF9F6] dark:bg-[#121413] pb-24 overflow-y-auto no-scrollbar">
       <PopupAlert {...alertConfig} onClose={closeAlert} />
-      <ProfileHeader user={user} veeHealth={veeHealth} isLoading={isLoading} />
+      <ProfileHeader user={user} isLoading={isLoading} />
 
       <div className="p-6 space-y-6">
         {isLoading ? (
