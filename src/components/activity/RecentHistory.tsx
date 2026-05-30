@@ -1,5 +1,5 @@
 // src/components/activity/RecentHistory.tsx
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Brain, Moon, Utensils, Heart, MessageCircle } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
 import type { ActivityHistoryItem, ActivityType } from '@/types/api';
@@ -73,26 +73,31 @@ interface RecentHistoryProps {
 }
 
 export default function RecentHistory({ items, isLoading = false }: RecentHistoryProps) {
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const canExpand = items.length > 5;
+  const displayedItems = isExpanded ? items : items.slice(0, 5);
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4 mt-2">
          <h3 className="text-sm font-bold text-[#2B4B3D] dark:text-stone-100">Riwayat Terakhir</h3>
          {isLoading ? (
            <Skeleton className="h-3 w-16" />
-         ) : (
-           <a
-             href="/activity"
+         ) : canExpand ? (
+           <button
+             type="button"
+             onClick={() => setIsExpanded((current) => !current)}
              className="text-[10px] font-bold text-[#8CAAB8] dark:text-stone-500 cursor-pointer hover:text-[#8CE0A7] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7] rounded-md"
            >
-             Lihat Semua
-           </a>
-         )}
+             {isExpanded ? 'Sembunyikan' : 'Lihat Semua'}
+           </button>
+         ) : null}
       </div>
       <div className="space-y-3">
         {isLoading ? (
           [0, 1, 2, 3].map((item) => <LogCardSkeleton key={item} />)
         ) : items.length > 0 ? (
-          items.map((item) => {
+          displayedItems.map((item) => {
             const style = activityStyles[item.type] ?? activityStyles.journal;
 
             return (
