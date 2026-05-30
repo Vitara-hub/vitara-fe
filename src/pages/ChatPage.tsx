@@ -48,6 +48,7 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(() => !hasFreshCache);
   
   const bottomRef = useRef<HTMLDivElement>(null);
+  const isInitialMount = useRef<boolean>(true);
 
   useEffect(() => {
     if (hasFreshCache && chatMessages.data) return;
@@ -90,8 +91,14 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
     };
   }, [chatMessages.data, hasFreshCache, setChatMessages, veeHealth]);
 
-  useEffect(() => { 
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); 
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({
+      behavior: isInitialMount.current ? 'auto' : 'smooth',
+    });
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+    }
   }, [messages, isInitialLoading, isSending]);
 
   const updateMessages = (updater: (previous: ChatMessage[]) => ChatMessage[]) => {
