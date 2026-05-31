@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import useStore, { ActivityLog } from '@/store/useStore';
 import { vitaraApi } from '@/services/api';
-import type { SleepRequest, TypingRequest } from '@/types/api';
+import type { SleepAnalyzeRequest, TypingRequest } from '@/types/api';
 
 function getPayloadString(log: ActivityLog, key: string): string | null {
   const value = log.pendingPayload?.[key];
@@ -62,14 +62,14 @@ async function syncPendingLog(log: ActivityLog): Promise<Partial<ActivityLog>> {
   }
 
   if (log.type === 'sleep') {
-    const sleepRequest: SleepRequest = {
-      duration_hours: getPayloadNumber(log, 'durationHours') ?? 0,
-      bedtime: getPayloadString(log, 'bedtime') ?? '',
-      wake_time: getPayloadString(log, 'wakeTime') ?? '',
+    const durationHours = getPayloadNumber(log, 'durationHours');
+    const sleepRequest: SleepAnalyzeRequest = {
+      sleepTime: getPayloadString(log, 'bedtime') ?? '',
+      wakeTime: getPayloadString(log, 'wakeTime') ?? '',
       interruptions: getPayloadNumber(log, 'interruptions') ?? 0,
     };
 
-    if (!sleepRequest.bedtime || !sleepRequest.wake_time || sleepRequest.duration_hours <= 0) {
+    if (!sleepRequest.sleepTime || !sleepRequest.wakeTime || durationHours === null || durationHours <= 0) {
       throw new Error('Missing sleep payload for background sync.');
     }
 

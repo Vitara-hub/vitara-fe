@@ -44,12 +44,10 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
     setResultHealth(null);
     
     try {
-      const durationFloat = dur.h + (dur.m / 60);
       const response = await vitaraApi.predictSleep({
-        duration_hours: durationFloat,
-        bedtime,
-        wake_time: wakeTime,
-        interruptions
+        sleepTime: bedtime,
+        wakeTime,
+        interruptions,
       });
 
       const nextHealth: VeeHealthStatus = response.qualityScore >= 70 ? 'fresh' : 'tired';
@@ -58,7 +56,7 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
 
       updateMetric('sleep', { qualityScore: response.qualityScore });
       addLog({ type: 'sleep', summary: `Tidur ${dur.h}j ${dur.m}m (Skor: ${response.qualityScore})`, qualityScore: response.qualityScore, syncStatus: 'synced' });
-      void refreshDashboardAndActivity();
+      await refreshDashboardAndActivity();
 
     } catch (error) {
       // 🚀 OFFLINE FIRST: Tidak ada tebakan skor tidur.
