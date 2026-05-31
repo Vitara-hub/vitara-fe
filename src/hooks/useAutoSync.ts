@@ -1,6 +1,140 @@
 import { useEffect } from 'react';
-import useStore from '@/store/useStore';
+import useStore, { ActivityLog } from '@/store/useStore';
 import { vitaraApi } from '@/services/api';
+import type { SleepRequest, TypingRequest } from '@/types/api';
+
+function getPayloadString(log: ActivityLog, key: string): string | null {
+  const value = log.pendingPayload?.[key];
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
+function getPayloadNumber(log: ActivityLog, key: string): number | null {
+  const value = log.pendingPayload?.[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function getPendingJournalText(log: ActivityLog) {
+  return getPayloadString(log, 'text') ?? log.summary.replace(' (Menunggu Sync)', '');
+}
+
+function getPendingTypingPayload(log: ActivityLog): TypingRequest | null {
+  const typing = log.pendingPayload?.typing;
+  if (!typing || typeof typing !== 'object') return null;
+
+  const payload = typing as Partial<TypingRequest>;
+  if (
+    typeof payload.wpm !== 'number' ||
+    typeof payload.backspaceRate !== 'number' ||
+    !Array.isArray(payload.interKeyTimings)
+  ) {
+    return null;
+  }
+
+  return {
+    wpm: payload.wpm,
+    backspaceRate: payload.backspaceRate,
+    interKeyTimings: payload.interKeyTimings,
+    duration: payload.duration,
+    textContent: payload.textContent,
+  };
+}
+
+async function syncPendingLog(log: ActivityLog): Promise<Partial<ActivityLog>> {
+  if (log.type === 'journal') {
+    const journalResult = await vitaraApi.predictJournal({ text: getPendingJournalText(log) });
+    const typingPayload = getPendingTypingPayload(log);
+
+    if (typingPayload) {
+      const typingResult = await vitaraApi.predictTyping(typingPayload);
+      useStore.getState().updateMetric('typing', { stressScore: typingResult.stressScore });
+    }
+
+    useStore.getState().updateMetric('nlp', {
+      emotion: journalResult.emotion,
+      stressLevel: journalResult.stressLevel,
+    });
+
+    return {
+      emotion: journalResult.emotion,
+      stressLevel: journalResult.stressLevel,
+      summary: log.summary.replace(' (Menunggu Sync)', ''),
+    };
+  }
+
+  if (log.type === 'sleep') {
+    const sleepRequest: SleepRequest = {
+      duration_hours: getPayloadNumber(log, 'durationHours') ?? 0,
+      bedtime: getPayloadString(log, 'bedtime') ?? '',
+      wake_time: getPayloadString(log, 'wakeTime') ?? '',
+      interruptions: getPayloadNumber(log, 'interruptions') ?? 0,
+    };
+
+    if (!sleepRequest.bedtime || !sleepRequest.wake_time || sleepRequest.duration_hours <= 0) {
+      throw new Error('Missing sleep payload for background sync.');
+    }
+
+    const response = await vitaraApi.predictSleep(sleepRequest);
+    useStore.getState().updateMetric('sleep', { qualityScore: response.qualityScore });
+
+    return {
+      qualityScore: response.qualityScore,
+      summary: log.summary.replace(' (Menunggu Sync)', ` (Skor: ${response.qualityScore})`),
+    };
+  }
+
+  if (log.type === 'food') {
+    const imageFile = log.pendingPayload?.imageFile;
+    if (imageFile instanceof File) {
+      const response = await vitaraApi.predictFood(imageFile);
+      useStore.getState().updateMetric('food', {
+        estimatedCalories: response.estimatedCalories,
+      });
+
+      return {
+        calories: response.estimatedCalories,
+        foods: response.foods,
+        summary: `Makan: ${response.foods.join(', ')} (${response.estimatedCalories} kcal)`,
+      };
+    }
+
+    const name = getPayloadString(log, 'name') ?? log.foods?.join(', ') ?? '';
+    const calories = getPayloadNumber(log, 'calories') ?? log.calories;
+
+    if (!name || typeof calories !== 'number') {
+      throw new Error('Missing food payload for background sync.');
+    }
+
+    await vitaraApi.createManualFoodLog({
+      name,
+      calories,
+      protein: getPayloadNumber(log, 'protein') ?? 0,
+      carbs: getPayloadNumber(log, 'carbs') ?? 0,
+      fat: getPayloadNumber(log, 'fat') ?? 0,
+      consumedAt: getPayloadString(log, 'consumedAt') ?? log.timestamp,
+    });
+
+    useStore.getState().updateMetric('food', { estimatedCalories: calories });
+
+    return {
+      calories,
+      foods: [name],
+      summary: `Makan: ${name} (${calories} kcal)`,
+    };
+  }
+
+  if (log.type === 'chat') {
+    const message = getPayloadString(log, 'message');
+    if (!message) throw new Error('Missing chat payload for background sync.');
+
+    await vitaraApi.sendChatMessage({ message });
+
+    return {
+      summary: log.summary.replace(' (Menunggu Sync)', ''),
+    };
+  }
+
+  return {};
+}
 
 export const useAutoSync = () => {
   useEffect(() => {
@@ -19,29 +153,27 @@ export const useAutoSync = () => {
         if (pendingLogs.length === 0) return;
 
         console.log(`Menyinkronkan ${pendingLogs.length} data ke server...`);
+        let syncedCount = 0;
 
         for (const log of pendingLogs) {
           try {
-            if (log.type !== 'journal') continue;
-
-            const response = await vitaraApi.predictJournal({ text: log.summary });
+            const syncedFields = await syncPendingLog(log);
 
             useStore.setState((state) => ({
               activityHistory: state.activityHistory.map((item) =>
                 item.id === log.id
                   ? {
                       ...item,
+                      ...syncedFields,
                       syncStatus: 'synced',
-                      emotion: response.emotion,
-                      stressLevel: response.stressLevel,
-                      summary: item.summary.replace(' (Menunggu Sync)', ''),
+                      pendingPayload: undefined,
                     }
                   : item
               ),
               isServerDown: false,
             }));
 
-            store.updateMetric('nlp', { emotion: response.emotion, stressLevel: response.stressLevel });
+            syncedCount += 1;
           } catch (error) {
             console.error(`Gagal sinkronisasi log ${log.id}, server mati!`, error);
             useStore.getState().setServerDown(true);
@@ -49,6 +181,9 @@ export const useAutoSync = () => {
           }
         }
 
+        if (syncedCount > 0) {
+          await useStore.getState().refreshDashboardAndActivity();
+        }
       })().finally(() => {
         isSyncing = false;
       });

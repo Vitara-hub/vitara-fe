@@ -39,6 +39,7 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
     veeWeight,
     chatMessages,
     setChatMessages,
+    refreshDashboardAndActivity,
   } = useStore();
 
   const hasFreshCache = isFresh(chatMessages.fetchedAt);
@@ -141,6 +142,7 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
       );
 
       addLog({ type: 'chat', summary: `Ngobrol dengan Vee: "${textToSubmit.substring(0, 30)}..."`, syncStatus: 'synced' });
+      void refreshDashboardAndActivity();
 
     } catch (error) {
       console.warn('Chat API Offline:', error);
@@ -159,7 +161,10 @@ export default function ChatPage({ veeHealth }: ChatPageProps) {
       addLog({ 
         type: 'chat', 
         summary: `Ngobrol: "${textToSubmit.substring(0, 30)}..." (Menunggu Sync)`, 
-        syncStatus: 'pending' 
+        syncStatus: 'pending',
+        pendingPayload: {
+          message: textToSubmit,
+        },
       });
 
     } finally { 

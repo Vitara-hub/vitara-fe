@@ -10,6 +10,7 @@ import {
   setAuthTokens,
 } from '@/services/authSession';
 import { isApiConfigured, resetChatSession, vitaraApi } from '@/services/api';
+import { mapActivityFeed } from '@/utils/activityMapper';
 import type { AuthMeResponse, AuthTokensResponse } from '@/types/api';
 import type { ActivityDataResponse, ChatHistoryMessage, DashboardTodayResponse } from '@/types/api';
 
@@ -18,6 +19,7 @@ export interface BaseActivityLog {
   timestamp: string; 
   summary: string; 
   syncStatus?: 'synced' | 'pending'; 
+  pendingPayload?: Record<string, unknown>;
 }
 
 export interface JournalLog extends BaseActivityLog { type: 'journal'; emotion?: string; stressLevel?: number; }
@@ -195,6 +197,7 @@ interface StoreState {
   setDashboardHealthScore: (data: DashboardTodayResponse | null) => void;
   setActivityData: (data: ActivityDataResponse | null) => void;
   setChatMessages: (data: ChatHistoryMessage[] | null) => void;
+  refreshDashboardAndActivity: () => Promise<void>;
   clearCachedPageData: () => void;
 
   isServerDown: boolean;
@@ -310,6 +313,44 @@ const useStore = create<StoreState>()(
       setChatMessages: (data) => set({
         chatMessages: { data, fetchedAt: data ? Date.now() : null },
       }),
+      refreshDashboardAndActivity: async () => {
+        const [dashboardResult, dailyResult, recentResult, summaryResult] = await Promise.allSettled([
+          vitaraApi.getDashboardToday(),
+          vitaraApi.getHealthDaily(),
+          vitaraApi.getActivityRecent({ limit: 20 }),
+          vitaraApi.getActivitySummary('7d'),
+        ]);
+
+        if (dashboardResult.status === 'fulfilled') {
+          set({
+            dashboardHealthScore: {
+              data: dashboardResult.value,
+              fetchedAt: Date.now(),
+            },
+          });
+        } else {
+          console.warn('Failed to refresh dashboard after log update.', dashboardResult.reason);
+        }
+
+        if (
+          dailyResult.status === 'fulfilled' &&
+          recentResult.status === 'fulfilled' &&
+          summaryResult.status === 'fulfilled'
+        ) {
+          set({
+            activityData: {
+              data: mapActivityFeed(dailyResult.value, recentResult.value, summaryResult.value),
+              fetchedAt: Date.now(),
+            },
+          });
+        } else {
+          console.warn('Failed to refresh activity after log update.', {
+            daily: dailyResult.status === 'rejected' ? dailyResult.reason : null,
+            recent: recentResult.status === 'rejected' ? recentResult.reason : null,
+            summary: summaryResult.status === 'rejected' ? summaryResult.reason : null,
+          });
+        }
+      },
       clearCachedPageData: () => set({
         dashboardHealthScore: emptyCacheEntry<DashboardTodayResponse>(),
         activityData: emptyCacheEntry<ActivityDataResponse>(),

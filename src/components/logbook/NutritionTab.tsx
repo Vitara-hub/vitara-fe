@@ -32,7 +32,7 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
   const [popup, setPopup] = useState<PopupState>({ isOpen: false, title: '', message: '', type: 'info' });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { addLog, updateMetric } = useStore();
+  const { addLog, updateMetric, refreshDashboardAndActivity } = useStore();
 
   const mealTimeRef = useRef<string>(mealTime);
 
@@ -87,7 +87,10 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
       addLog({ 
         type: 'food', 
         summary: `Foto Makanan (Menunggu Sync)`, 
-        syncStatus: 'pending' 
+        syncStatus: 'pending',
+        pendingPayload: {
+          imageFile: selectedFile,
+        },
       });
 
       setPopup({ 
@@ -110,6 +113,7 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
 
     updateMetric('food', { estimatedCalories: result.calories });
     addLog({ type: 'food', summary: `Makan: ${result.name} (${result.calories} kcal)`, calories: result.calories, foods: result.name.split(', '), syncStatus: 'synced' });
+    void refreshDashboardAndActivity();
   };
 
   return (

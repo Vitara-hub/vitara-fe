@@ -23,7 +23,7 @@ export default function JournalTab({ jumpDirection, veeHealth, setVeeHealth, wei
   const [popup, setPopup] = useState<PopupState>({ isOpen: false, title: '', message: '', type: 'info' });
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
-  const { addLog, updateMetric } = useStore();
+  const { addLog, updateMetric, refreshDashboardAndActivity } = useStore();
   const { metrics, handleKeyDown, resetTracker } = useKeystrokeTracker();
 
   const handleTextChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -52,6 +52,7 @@ export default function JournalTab({ jumpDirection, veeHealth, setVeeHealth, wei
       updateMetric('nlp', { emotion: journalResult.emotion, stressLevel: journalResult.stressLevel });
       updateMetric('typing', { stressScore: typingResult.stressScore });
       addLog({ type: 'journal', summary: text.substring(0, 50) + '...', emotion: journalResult.emotion, stressLevel: journalResult.stressLevel, syncStatus: 'synced' });
+      void refreshDashboardAndActivity();
 
       setPopup({ isOpen: true, type: 'success', title: 'Analisis Selesai!', message: `Emosi Dominan: ${journalResult.emotion}\nTopik: ${journalResult.topics.join(', ')}` });
 
@@ -65,7 +66,16 @@ export default function JournalTab({ jumpDirection, veeHealth, setVeeHealth, wei
       addLog({ 
         type: 'journal', 
         summary: text.substring(0, 50) + '... (Menunggu Sync)', 
-        syncStatus: 'pending' 
+        syncStatus: 'pending',
+        pendingPayload: {
+          text,
+          typing: {
+            wpm: metrics.wpm,
+            backspaceRate: metrics.backspaceRate,
+            interKeyTimings: metrics.interKeyTimings.length > 0 ? metrics.interKeyTimings : [200],
+            textContent: text,
+          },
+        },
       });
 
       setPopup({ 

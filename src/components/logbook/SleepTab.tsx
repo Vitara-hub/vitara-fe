@@ -24,7 +24,7 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
   const [resultHealth, setResultHealth] = useState<VeeHealthStatus | null>(null);
   const [popup, setPopup] = useState<PopupState>({ isOpen: false, title: '', message: '', type: 'info' });
   
-  const { addLog, updateMetric } = useStore();
+  const { addLog, updateMetric, refreshDashboardAndActivity } = useStore();
 
   const getSleepDuration = () => {
     const [bH, bM] = bedtime.split(':').map(Number);
@@ -58,6 +58,7 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
 
       updateMetric('sleep', { qualityScore: response.qualityScore });
       addLog({ type: 'sleep', summary: `Tidur ${dur.h}j ${dur.m}m (Skor: ${response.qualityScore})`, qualityScore: response.qualityScore, syncStatus: 'synced' });
+      void refreshDashboardAndActivity();
 
     } catch (error) {
       // 🚀 OFFLINE FIRST: Tidak ada tebakan skor tidur.
@@ -69,7 +70,13 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
       addLog({ 
         type: 'sleep', 
         summary: `Tidur ${dur.h}j ${dur.m}m (Menunggu Sync)`, 
-        syncStatus: 'pending' 
+        syncStatus: 'pending',
+        pendingPayload: {
+          durationHours: dur.h + (dur.m / 60),
+          bedtime,
+          wakeTime,
+          interruptions,
+        },
       });
 
       setPopup({ 
