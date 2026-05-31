@@ -92,6 +92,15 @@ function emptyCacheEntry<T>(): CacheEntry<T> {
   return { data: null, fetchedAt: null };
 }
 
+function emptyActivityData(): ActivityDataResponse {
+  return {
+    average_score: 0,
+    weekly_change_percent: 0,
+    chart: [],
+    history: [],
+  };
+}
+
 function getLoggedOutState() {
   return {
     isAuthenticated: false,
@@ -198,6 +207,7 @@ interface StoreState {
   setActivityData: (data: ActivityDataResponse | null) => void;
   setChatMessages: (data: ChatHistoryMessage[] | null) => void;
   removeActivityItemOptimistically: (id: string | number) => void;
+  clearAllActivityDataOptimistically: () => void;
   refreshDashboardAndActivity: () => Promise<void>;
   clearCachedPageData: () => void;
 
@@ -329,6 +339,22 @@ const useStore = create<StoreState>()(
               : null,
           },
         };
+      }),
+      clearAllActivityDataOptimistically: () => set({
+        activityHistory: [],
+        latestMetrics: { nlp: null, food: null, sleep: null, typing: null },
+        dashboardHealthScore: {
+          data: null,
+          fetchedAt: Date.now(),
+        },
+        activityData: {
+          data: emptyActivityData(),
+          fetchedAt: Date.now(),
+        },
+        chatMessages: {
+          data: [],
+          fetchedAt: Date.now(),
+        },
       }),
       refreshDashboardAndActivity: async () => {
         const [dashboardResult, dailyResult, recentResult, summaryResult] = await Promise.allSettled([

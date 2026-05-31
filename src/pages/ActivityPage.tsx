@@ -154,7 +154,6 @@ export default function ActivityPage() {
     activityData: cachedActivityData,
     setActivityData,
     removeActivityItemOptimistically,
-    refreshDashboardAndActivity,
   } = useStore();
   const hasFreshCache = isFresh(cachedActivityData.fetchedAt);
   const activityData = cachedActivityData.data || emptyActivityData;
@@ -171,9 +170,7 @@ export default function ActivityPage() {
       try {
         await vitaraApi.deleteLog(id);
       } catch (error) {
-        console.warn('Failed to delete activity log on backend. Refreshing latest state.', error);
-      } finally {
-        await refreshDashboardAndActivity();
+        console.warn('Failed to delete activity log on backend. Keeping optimistic UI state for demo.', error);
       }
     })();
   };

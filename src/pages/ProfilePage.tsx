@@ -21,7 +21,7 @@ const closedAlert: ProfileAlertState = {
 };
 
 export default function ProfilePage() {
-  const { user, logout } = useStore();
+  const { user, logout, clearAllActivityDataOptimistically } = useStore();
   const [alertConfig, setAlertConfig] = useState<ProfileAlertState>(closedAlert);
   const [isDeletingData, setIsDeletingData] = useState<boolean>(false);
   const isLoading = false;
@@ -44,6 +44,7 @@ export default function ProfilePage() {
 
   const submitDataDeletionRequest = async () => {
     setIsDeletingData(true);
+    clearAllActivityDataOptimistically();
 
     try {
       await vitaraApi.requestDataDeletion();
