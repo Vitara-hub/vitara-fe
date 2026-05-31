@@ -65,22 +65,7 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
       ),
     );
 
-  const handleSaveSleep = async () => {
-    if (hasSleepLogToday) {
-      setPopup({
-        isOpen: true,
-        type: 'info',
-        title: 'Tidur Sudah Dicatat',
-        message: 'Data tidur utama hari ini sudah ada. Untuk demo, Vee hanya menerima satu catatan tidur per hari.',
-      });
-      return;
-    }
-
-    const isConfirmed = window.confirm(
-      'Pastikan jam tidurmu sudah benar. Data tidur utama hanya bisa dicatat satu kali untuk hari ini. Lanjutkan?',
-    );
-    if (!isConfirmed) return;
-
+  const submitSleepLog = async () => {
     setSleepState('sleeping');
     setResultHealth(null);
     
@@ -128,6 +113,30 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
     } finally {
       setSleepState('result');
     }
+  };
+
+  const handleSaveSleep = () => {
+    if (hasSleepLogToday) {
+      setPopup({
+        isOpen: true,
+        type: 'info',
+        title: 'Tidur Sudah Dicatat',
+        message: 'Data tidur utama hari ini sudah ada. Untuk demo, Vee hanya menerima satu catatan tidur per hari.',
+      });
+      return;
+    }
+
+    setPopup({
+      isOpen: true,
+      type: 'info',
+      title: 'Konfirmasi Data Tidur',
+      message: 'Pastikan jam tidurmu sudah benar. Data tidur utama hanya bisa dicatat satu kali untuk hari ini. Lanjutkan?',
+      confirmLabel: 'Lanjutkan',
+      cancelLabel: 'Cek Lagi',
+      onConfirm: () => {
+        void submitSleepLog();
+      },
+    });
   };
 
   return (

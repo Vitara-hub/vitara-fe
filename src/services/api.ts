@@ -457,10 +457,6 @@ export const vitaraApi = {
     return unwrap(response.data).items;
   },
 
-  deleteLog: async (id: string | number): Promise<void> => {
-    await apiClient.delete(`/api/activity/${id}`);
-  },
-
   getActivityFeed: async (period: '7d' | '30d' = '7d'): Promise<ActivityDataResponse> => {
     const [daily, recent, summary] = await Promise.all([
       vitaraApi.getHealthDaily(),

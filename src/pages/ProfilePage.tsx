@@ -21,7 +21,7 @@ const closedAlert: ProfileAlertState = {
 };
 
 export default function ProfilePage() {
-  const { user, logout, clearAllActivityDataOptimistically } = useStore();
+  const { user, logout } = useStore();
   const [alertConfig, setAlertConfig] = useState<ProfileAlertState>(closedAlert);
   const [isDeletingData, setIsDeletingData] = useState<boolean>(false);
   const isLoading = false;
@@ -44,14 +44,13 @@ export default function ProfilePage() {
 
   const submitDataDeletionRequest = async () => {
     setIsDeletingData(true);
-    clearAllActivityDataOptimistically();
 
     try {
       await vitaraApi.requestDataDeletion();
       setAlertConfig({
         isOpen: true,
         title: 'Permintaan Dikirim',
-        message: 'Permintaan penghapusan data riwayat aktivitas berhasil dikirim. Akun kamu tetap aktif dan aman.',
+        message: 'Pengajuan penghapusan data berhasil dikirim.',
         type: 'success',
         confirmLabel: 'Mengerti',
       });

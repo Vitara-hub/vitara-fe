@@ -1,17 +1,15 @@
 // src/components/activity/RecentHistory.tsx
 import { ReactNode, useState } from 'react';
-import { Brain, Moon, Utensils, Heart, MessageCircle, Trash2 } from 'lucide-react';
+import { Brain, Moon, Utensils, Heart, MessageCircle } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
 import type { ActivityHistoryItem, ActivityType } from '@/types/api';
 
 interface LogCardProps {
-  id: string | number;
   icon: ReactNode;
   color: string;
   title: string;
   time: string;
   score: string | number;
-  onDelete?: (id: string | number) => void;
 }
 
 const activityStyles: Record<ActivityType, { icon: ReactNode; color: string }> = {
@@ -37,7 +35,7 @@ const activityStyles: Record<ActivityType, { icon: ReactNode; color: string }> =
   },
 };
 
-function LogCard({ id, icon, color, title, time, score, onDelete }: LogCardProps) {
+function LogCard({ icon, color, title, time, score }: LogCardProps) {
   return (
     <div className="bg-white dark:bg-[#1A1D1B] p-4 rounded-[20px] shadow-sm flex items-center justify-between border border-[#E8F0EA] dark:border-stone-800">
       <div className="flex items-center gap-4 min-w-0">
@@ -51,16 +49,6 @@ function LogCard({ id, icon, color, title, time, score, onDelete }: LogCardProps
         <span className="text-xs font-black text-[#2B4B3D] dark:text-stone-50 bg-[#FAF9F6] dark:bg-stone-800 px-3 py-1.5 rounded-lg border border-[#E8F0EA] dark:border-stone-700">
           {score}
         </span>
-        {onDelete ? (
-          <button
-            type="button"
-            aria-label={`Hapus ${title}`}
-            onClick={() => onDelete(id)}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#A0B0A8] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
-          >
-            <Trash2 size={14} strokeWidth={2.5} />
-          </button>
-        ) : null}
       </div>
     </div>
   );
@@ -84,10 +72,9 @@ function LogCardSkeleton() {
 interface RecentHistoryProps {
   items: ActivityHistoryItem[];
   isLoading?: boolean;
-  onDelete?: (id: string | number) => void;
 }
 
-export default function RecentHistory({ items, isLoading = false, onDelete }: RecentHistoryProps) {
+export default function RecentHistory({ items, isLoading = false }: RecentHistoryProps) {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const canExpand = items.length > 5;
   const displayedItems = isExpanded ? items : items.slice(0, 5);
@@ -117,14 +104,12 @@ export default function RecentHistory({ items, isLoading = false, onDelete }: Re
 
             return (
               <LogCard
-                id={item.id}
                 key={item.id}
                 icon={style.icon}
                 color={style.color}
                 title={item.title}
                 time={item.time}
                 score={item.score}
-                onDelete={onDelete}
               />
             );
           })

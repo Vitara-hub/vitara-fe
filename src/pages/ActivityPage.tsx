@@ -153,7 +153,6 @@ export default function ActivityPage() {
     activityHistory,
     activityData: cachedActivityData,
     setActivityData,
-    removeActivityItemOptimistically,
   } = useStore();
   const hasFreshCache = isFresh(cachedActivityData.fetchedAt);
   const activityData = cachedActivityData.data || emptyActivityData;
@@ -162,18 +161,6 @@ export default function ActivityPage() {
   const observerVeeState: VeeOverrideState = { activeTraits: ['glasses'] };
 
   const localActivityData = useMemo(() => buildLocalActivityData(activityHistory), [activityHistory]);
-
-  const handleDeleteActivity = (id: string | number) => {
-    removeActivityItemOptimistically(id);
-
-    void (async () => {
-      try {
-        await vitaraApi.deleteLog(id);
-      } catch (error) {
-        console.warn('Failed to delete activity log on backend. Keeping optimistic UI state for demo.', error);
-      }
-    })();
-  };
 
   useEffect(() => {
     if (hasFreshCache) {
@@ -233,7 +220,7 @@ export default function ActivityPage() {
         isLoading={isLoading}
         overrideState={!isLoading ? observerVeeState : undefined}
       />
-      <RecentHistory items={activityData.history} isLoading={isLoading} onDelete={handleDeleteActivity} />
+      <RecentHistory items={activityData.history} isLoading={isLoading} />
       
       <div className="h-32 shrink-0 w-full"></div>
     </div>

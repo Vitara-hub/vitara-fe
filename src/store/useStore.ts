@@ -92,15 +92,6 @@ function emptyCacheEntry<T>(): CacheEntry<T> {
   return { data: null, fetchedAt: null };
 }
 
-function emptyActivityData(): ActivityDataResponse {
-  return {
-    average_score: 0,
-    weekly_change_percent: 0,
-    chart: [],
-    history: [],
-  };
-}
-
 function getLoggedOutState() {
   return {
     isAuthenticated: false,
@@ -206,8 +197,6 @@ interface StoreState {
   setDashboardHealthScore: (data: DashboardTodayResponse | null) => void;
   setActivityData: (data: ActivityDataResponse | null) => void;
   setChatMessages: (data: ChatHistoryMessage[] | null) => void;
-  removeActivityItemOptimistically: (id: string | number) => void;
-  clearAllActivityDataOptimistically: () => void;
   refreshDashboardAndActivity: () => Promise<void>;
   clearCachedPageData: () => void;
 
@@ -323,38 +312,6 @@ const useStore = create<StoreState>()(
       }),
       setChatMessages: (data) => set({
         chatMessages: { data, fetchedAt: data ? Date.now() : null },
-      }),
-      removeActivityItemOptimistically: (id) => set((state) => {
-        const targetId = String(id);
-
-        return {
-          activityHistory: state.activityHistory.filter((log) => String(log.id) !== targetId),
-          activityData: {
-            ...state.activityData,
-            data: state.activityData.data
-              ? {
-                  ...state.activityData.data,
-                  history: state.activityData.data.history.filter((item) => String(item.id) !== targetId),
-                }
-              : null,
-          },
-        };
-      }),
-      clearAllActivityDataOptimistically: () => set({
-        activityHistory: [],
-        latestMetrics: { nlp: null, food: null, sleep: null, typing: null },
-        dashboardHealthScore: {
-          data: null,
-          fetchedAt: Date.now(),
-        },
-        activityData: {
-          data: emptyActivityData(),
-          fetchedAt: Date.now(),
-        },
-        chatMessages: {
-          data: [],
-          fetchedAt: Date.now(),
-        },
       }),
       refreshDashboardAndActivity: async () => {
         const [dashboardResult, dailyResult, recentResult, summaryResult] = await Promise.allSettled([
