@@ -197,6 +197,7 @@ interface StoreState {
   setDashboardHealthScore: (data: DashboardTodayResponse | null) => void;
   setActivityData: (data: ActivityDataResponse | null) => void;
   setChatMessages: (data: ChatHistoryMessage[] | null) => void;
+  removeActivityItemOptimistically: (id: string | number) => void;
   refreshDashboardAndActivity: () => Promise<void>;
   clearCachedPageData: () => void;
 
@@ -312,6 +313,22 @@ const useStore = create<StoreState>()(
       }),
       setChatMessages: (data) => set({
         chatMessages: { data, fetchedAt: data ? Date.now() : null },
+      }),
+      removeActivityItemOptimistically: (id) => set((state) => {
+        const targetId = String(id);
+
+        return {
+          activityHistory: state.activityHistory.filter((log) => String(log.id) !== targetId),
+          activityData: {
+            ...state.activityData,
+            data: state.activityData.data
+              ? {
+                  ...state.activityData.data,
+                  history: state.activityData.data.history.filter((item) => String(item.id) !== targetId),
+                }
+              : null,
+          },
+        };
       }),
       refreshDashboardAndActivity: async () => {
         const [dashboardResult, dailyResult, recentResult, summaryResult] = await Promise.allSettled([

@@ -16,6 +16,17 @@ interface SleepTabProps {
   eyeLookY?: number;
 }
 
+function isSameDay(isoTimestamp: string, date: Date) {
+  const parsed = new Date(isoTimestamp);
+  if (Number.isNaN(parsed.getTime())) return false;
+
+  return (
+    parsed.getFullYear() === date.getFullYear() &&
+    parsed.getMonth() === date.getMonth() &&
+    parsed.getDate() === date.getDate()
+  );
+}
+
 export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weight, eyeLookX, eyeLookY }: SleepTabProps) {
   const [bedtime, setBedtime] = useState<string>('23:00'); 
   const [wakeTime, setWakeTime] = useState<string>('06:30');
@@ -24,7 +35,13 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
   const [resultHealth, setResultHealth] = useState<VeeHealthStatus | null>(null);
   const [popup, setPopup] = useState<PopupState>({ isOpen: false, title: '', message: '', type: 'info' });
   
-  const { addLog, updateMetric, refreshDashboardAndActivity } = useStore();
+  const {
+    activityData,
+    activityHistory,
+    addLog,
+    updateMetric,
+    refreshDashboardAndActivity,
+  } = useStore();
 
   const getSleepDuration = () => {
     const [bH, bM] = bedtime.split(':').map(Number);
@@ -38,8 +55,32 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
 
   const dur = getSleepDuration();
   const displayedHealth = resultHealth ?? veeHealth;
+  const today = new Date();
+  const todayActivityLabel = today.toLocaleString('id-ID', { day: 'numeric', month: 'short' });
+  const hasSleepLogToday =
+    activityHistory.some((log) => log.type === 'sleep' && isSameDay(log.timestamp, today)) ||
+    Boolean(
+      activityData.data?.history.some(
+        (item) => item.type === 'sleep' && item.time.includes(todayActivityLabel),
+      ),
+    );
 
   const handleSaveSleep = async () => {
+    if (hasSleepLogToday) {
+      setPopup({
+        isOpen: true,
+        type: 'info',
+        title: 'Tidur Sudah Dicatat',
+        message: 'Data tidur utama hari ini sudah ada. Untuk demo, Vee hanya menerima satu catatan tidur per hari.',
+      });
+      return;
+    }
+
+    const isConfirmed = window.confirm(
+      'Pastikan jam tidurmu sudah benar. Data tidur utama hanya bisa dicatat satu kali untuk hari ini. Lanjutkan?',
+    );
+    if (!isConfirmed) return;
+
     setSleepState('sleeping');
     setResultHealth(null);
     
@@ -128,8 +169,12 @@ export default function SleepTab({ jumpDirection, veeHealth, setVeeHealth, weigh
                 <button onClick={() => setInterruptions(interruptions + 1)} className="w-10 h-10 rounded-[16px] bg-white dark:bg-stone-800 shadow-sm flex justify-center items-center hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors active:scale-95"><Plus size={18} strokeWidth={3} className="text-[#244135] dark:text-stone-100" /></button>
             </div>
           </div>
-          <button onClick={() => { void handleSaveSleep(); }} className="w-full py-4 mt-6 rounded-[22px] bg-[#244135] dark:bg-[#8CE0A7] text-white dark:text-[#121413] font-black text-sm shadow-[0_8px_24px_rgba(36,65,53,0.15)] hover:scale-[1.02] active:scale-95 transition-all">
-            Kalkulasi Pemulihan
+          <button
+            onClick={() => { void handleSaveSleep(); }}
+            disabled={hasSleepLogToday}
+            className="w-full py-4 mt-6 rounded-[22px] bg-[#244135] dark:bg-[#8CE0A7] text-white dark:text-[#121413] font-black text-sm shadow-[0_8px_24px_rgba(36,65,53,0.15)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            {hasSleepLogToday ? 'Tidur Hari Ini Sudah Dicatat' : 'Kalkulasi Pemulihan'}
           </button>
         </div>
       )}
