@@ -2,7 +2,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from '@/App.tsx';
-// @ts-ignore
 import './index.css';
 import ErrorBoundary from './components/ui/ErrorBoundary.tsx'; // <--- IMPORT INI
 

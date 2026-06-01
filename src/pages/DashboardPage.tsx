@@ -33,8 +33,10 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
 
   useEffect(() => {
     if (hasFreshCache) {
-      setIsSyncing(false);
-      setErrorMessage(null);
+      queueMicrotask(() => {
+        setIsSyncing(false);
+        setErrorMessage(null);
+      });
       return;
     }
 

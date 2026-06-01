@@ -1,5 +1,5 @@
 // src/components/VitaraLogo.tsx
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 
 interface VitaraLogoProps {
   className?: string;
@@ -14,22 +14,25 @@ export default function VitaraLogo({
 }: VitaraLogoProps) {
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
 
-  const triggerAnimation = () => {
+  const triggerAnimation = useCallback(() => {
     setIsAnimating(true);
     setTimeout(() => {
       setIsAnimating(false);
-    }, 2200); 
-  };
+    }, 2200);
+  }, []);
 
   useEffect(() => {
     if (!autoPlay) return;
-    triggerAnimation();
+    const startTimeout = setTimeout(triggerAnimation, 0);
     const interval = setInterval(() => {
       triggerAnimation();
     }, loopInterval);
 
-    return () => clearInterval(interval);
-  }, [autoPlay, loopInterval]);
+    return () => {
+      clearTimeout(startTimeout);
+      clearInterval(interval);
+    };
+  }, [autoPlay, loopInterval, triggerAnimation]);
 
   const handleLogoClick = () => {
     if (!autoPlay && !isAnimating) {

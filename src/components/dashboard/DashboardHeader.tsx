@@ -1,5 +1,4 @@
 // src/components/dashboard/DashboardHeader.tsx
-import { useState, useEffect } from 'react';
 import { Sun, Moon } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
 import type { AuthUser } from '@/store/useStore';
@@ -19,7 +18,6 @@ export default function DashboardHeader({
   isLoading = false,
   dateLabel,
 }: DashboardHeaderProps) {
-  const [greeting, setGreeting] = useState<string>('Halo');
   const currentDate = dateLabel || new Date().toLocaleDateString('id-ID', {
     weekday: 'long',
     day: 'numeric',
@@ -29,13 +27,14 @@ export default function DashboardHeader({
   const avatarSrc = user?.imageUrl?.trim() || `https://api.dicebear.com/7.x/notionists/svg?seed=${avatarSeed}`;
   const avatarAlt = `${user?.username || user?.displayName || 'Vitara user'}'s avatar`;
 
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) setGreeting('Selamat Pagi');
-    else if (hour >= 12 && hour < 15) setGreeting('Selamat Siang');
-    else if (hour >= 15 && hour < 18) setGreeting('Selamat Sore');
-    else setGreeting('Selamat Malam');
-  }, []);
+  const hour = new Date().getHours();
+  const greeting = hour >= 5 && hour < 12
+    ? 'Selamat Pagi'
+    : hour >= 12 && hour < 15
+      ? 'Selamat Siang'
+      : hour >= 15 && hour < 18
+        ? 'Selamat Sore'
+        : 'Selamat Malam';
 
   return (
     <div className="flex justify-between items-center animate-in fade-in slide-in-from-top-4 duration-500">

@@ -1,5 +1,6 @@
 // src/hooks/useVeePhysics.ts
 import {
+  useCallback,
   useRef,
   useState,
   useEffect,
@@ -49,10 +50,10 @@ export default function useVeePhysics(): VeePhysicsReturn {
   const initY = useRef<number>(0);
   const veePos = useRef<{ x: number; y: number }>({ x: -1000, y: -1000 });
   const veeVel = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const veeDir = useRef<number>(1); 
-  const veeRot = useRef<number>(0); 
+  const veeDir = useRef<number>(1);
+  const veeRot = useRef<number>(0);
   const lastMouse = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  
+
   // Timer Refs
   const petCounter = useRef<number>(0);
   const petTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -62,19 +63,19 @@ export default function useVeePhysics(): VeePhysicsReturn {
   const boopAnimationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dizzyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clearTimer = (timerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>) => {
+  const clearTimer = useCallback((timerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>) => {
     if (!timerRef.current) return;
     clearTimeout(timerRef.current);
     timerRef.current = null;
-  };
+  }, []);
 
-  const resetIdleTimer = () => {
+  const resetIdleTimer = useCallback(() => {
     setIsSleeping(false);
     clearTimer(idleTimer);
     idleTimer.current = setTimeout(() => {
       setIsSleeping(true);
     }, 15000);
-  };
+  }, [clearTimer]);
 
   useEffect(() => {
     return () => {
@@ -84,18 +85,19 @@ export default function useVeePhysics(): VeePhysicsReturn {
       clearTimer(boopAnimationTimer);
       clearTimer(dizzyTimer);
     };
-  }, []);
+  }, [clearTimer]);
 
   useEffect(() => {
     window.addEventListener('mousemove', resetIdleTimer);
     window.addEventListener('keydown', resetIdleTimer);
-    resetIdleTimer();
+    const startTimer = setTimeout(resetIdleTimer, 0);
     return () => {
       window.removeEventListener('mousemove', resetIdleTimer);
       window.removeEventListener('keydown', resetIdleTimer);
+      clearTimeout(startTimer);
       clearTimer(idleTimer);
     };
-  }, []);
+  }, [clearTimer, resetIdleTimer]);
 
   useEffect(() => {
     const handleMouseLeaveWindow = () => {
@@ -110,7 +112,7 @@ export default function useVeePhysics(): VeePhysicsReturn {
     const isDesktopNow = window.innerWidth > 768;
     const vWidth = isDesktopNow ? 240 : 160;
     initY.current = window.innerHeight * (isDesktopNow ? 0.15 : 0.1);
-    
+
     veePos.current = {
       x: isDesktopNow ? window.innerWidth - vWidth - 64 : window.innerWidth - vWidth - 16,
       y: initY.current
@@ -130,9 +132,9 @@ export default function useVeePhysics(): VeePhysicsReturn {
       const currentScroll = scrollContainer ? scrollContainer.scrollTop : 0;
       const isScrolled = currentScroll > window.innerHeight * 0.6;
 
-      let currentGravity = 0.5; 
+      let currentGravity = 0.5;
       if (isScrolled) {
-        if (veePos.current.y > maxY * 0.5) currentGravity = 0.5; 
+        if (veePos.current.y > maxY * 0.5) currentGravity = 0.5;
         else currentGravity = -0.6;
       }
 
@@ -148,7 +150,7 @@ export default function useVeePhysics(): VeePhysicsReturn {
         const vcx = veePos.current.x + vW / 2;
         const vcy = veePos.current.y + vH / 2;
         const dist = Math.hypot(mx - vcx, my - vcy);
-        
+
         isMagnetized.current = !hasInteracted.current || dist < 350;
       } else {
         isMagnetized.current = false;
@@ -171,7 +173,7 @@ export default function useVeePhysics(): VeePhysicsReturn {
         const rect = magnetEl.getBoundingClientRect();
         const mx = rect.left + rect.width / 2;
         const my = rect.top + rect.height / 2;
-        
+
         if (!hasInteracted.current) {
           veePos.current.x = mx - vW / 2;
           veePos.current.y = my - vH / 2 + Math.sin(Date.now() / 400) * 10;
@@ -180,9 +182,9 @@ export default function useVeePhysics(): VeePhysicsReturn {
           veePos.current.y += (my - vH / 2 - veePos.current.y) * 0.15;
         }
         veeVel.current = { x: 0, y: 0 };
-        
+
       } else if (!isDragging.current && !isSleeping) {
-        veeVel.current.y += currentGravity; 
+        veeVel.current.y += currentGravity;
         veeVel.current.x *= 0.98;
         veeVel.current.y *= 0.99;
 
@@ -200,7 +202,7 @@ export default function useVeePhysics(): VeePhysicsReturn {
           onFloor = true;
         }
 
-        const ceilingLimit = -vH * 0.35; 
+        const ceilingLimit = -vH * 0.35;
         if (currentGravity < 0 && veePos.current.y < ceilingLimit) {
           veePos.current.y = ceilingLimit;
           if (Math.abs(veeVel.current.y) < 1.5) veeVel.current.y = 0;
@@ -208,7 +210,7 @@ export default function useVeePhysics(): VeePhysicsReturn {
           veeVel.current.x *= 0.85;
           onCeiling = true;
         }
-        
+
         if (veePos.current.y < ceilingLimit) {
           veePos.current.y = ceilingLimit;
           veeVel.current.y *= -0.5;
@@ -290,7 +292,7 @@ export default function useVeePhysics(): VeePhysicsReturn {
         veeVel.current.y = dy;
         lastMouse.current = { x: e.clientX, y: e.clientY };
       }
-      
+
       if (e.pointerType === 'mouse' && !isMouseDown) return;
       petCounter.current += 1;
       if (petCounter.current > 8) {
@@ -323,7 +325,7 @@ export default function useVeePhysics(): VeePhysicsReturn {
     onClick: () => {
       boopCount.current += 1;
       clearTimer(boopTimer);
-      
+
       boopTimer.current = setTimeout(() => { boopCount.current = 0; }, 1000);
       if (boopCount.current > 7) {
         setIsDizzy(true);
