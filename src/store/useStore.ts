@@ -92,6 +92,11 @@ function emptyCacheEntry<T>(): CacheEntry<T> {
   return { data: null, fetchedAt: null };
 }
 
+function replaceBrowserHistoryWithLogin() {
+  window.history.replaceState({}, '', '/login');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
 function getLoggedOutState() {
   return {
     isAuthenticated: false,
@@ -227,6 +232,7 @@ const useStore = create<StoreState>()(
         clearAuthTokens();
         resetChatSession();
         set(getLoggedOutState());
+        replaceBrowserHistoryWithLogin();
       },
       setAuthUser: (user) => set({ isAuthenticated: Boolean(user), isAuthLoading: false, user }),
       initAuth: async () => {
@@ -345,9 +351,9 @@ const useStore = create<StoreState>()(
           });
         } else {
           console.warn('Failed to refresh activity after log update.', {
-            daily: dailyResult.status === 'rejected' ? dailyResult.reason : null,
-            recent: recentResult.status === 'rejected' ? recentResult.reason : null,
-            summary: summaryResult.status === 'rejected' ? summaryResult.reason : null,
+            daily: dailyResult.status === 'rejected' ? dailyResult.reason as unknown : null,
+            recent: recentResult.status === 'rejected' ? recentResult.reason as unknown : null,
+            summary: summaryResult.status === 'rejected' ? summaryResult.reason as unknown : null,
           });
         }
       },

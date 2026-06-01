@@ -51,11 +51,12 @@ interface PillarsGridProps {
     sleepHours?: number;
   };
   isSyncing: boolean;
+  hasActivityHistory?: boolean;
 }
 
-export default function PillarsGrid({ breakdown, isSyncing }: PillarsGridProps) {
+export default function PillarsGrid({ breakdown, isSyncing, hasActivityHistory = true }: PillarsGridProps) {
   const moodScore = breakdown?.moodLabel ?? '--';
-  const stressLevel = breakdown?.stressLabel ?? '--';
+  const stressLevel = hasActivityHistory ? (breakdown?.stressLabel ?? 'Stabil') : 'Belum Ada Data';
   const nutritionVal = breakdown ? Math.round(breakdown?.nutritionKcal ?? 0) : '--';
   const sleepVal = breakdown ? (breakdown?.sleepHours ?? 0).toFixed(1) : '--';
 

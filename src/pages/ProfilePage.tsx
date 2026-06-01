@@ -39,7 +39,7 @@ export default function ProfilePage() {
   };
 
   const handleLogout = () => {
-    logout();
+    void logout();
   };
 
   const submitDataDeletionRequest = async () => {

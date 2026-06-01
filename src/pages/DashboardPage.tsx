@@ -23,6 +23,7 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
     user,
     veeWeight,
     dashboardHealthScore,
+    activityHistory,
     setDashboardHealthScore,
   } = useStore();
 
@@ -33,8 +34,10 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
 
   useEffect(() => {
     if (hasFreshCache) {
-      setIsSyncing(false);
-      setErrorMessage(null);
+      queueMicrotask(() => {
+        setIsSyncing(false);
+        setErrorMessage(null);
+      });
       return;
     }
 
@@ -102,7 +105,11 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
         suggestion={dashboardData?.suggestion}
       />
 
-      <PillarsGrid breakdown={dashboardData?.breakdown} isSyncing={isLoading} />
+      <PillarsGrid
+        breakdown={dashboardData?.breakdown}
+        isSyncing={isLoading}
+        hasActivityHistory={activityHistory.length > 0}
+      />
 
       <div className="h-32 shrink-0 w-full"></div>
     </div>
