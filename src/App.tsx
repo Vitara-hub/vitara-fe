@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect, lazy, Suspense } from 'react';
+import type { ReactNode } from 'react';
 import useStore from '@/store/useStore';
 import { useAutoSync } from '@/hooks/useAutoSync';
 import useKeyboardVisible from '@/hooks/useKeyboardVisible';
@@ -31,6 +32,39 @@ const viewPaths: Record<ViewType, string> = {
 };
 
 const protectedViews = new Set<ViewType>(['dashboard', 'logbook', 'activity', 'chat', 'profile']);
+
+
+interface NavigatorWithStandalone extends Navigator {
+  standalone?: boolean;
+}
+
+function PageLoader() {
+  return (
+    <div className="absolute inset-0 w-full h-full bg-[#FAF9F6] dark:bg-[#121413] z-50 p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Skeleton className="w-12 h-12 rounded-[20px]" />
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-5 w-44 max-w-[54vw]" />
+          </div>
+        </div>
+        <Skeleton className="w-10 h-10 rounded-[16px]" />
+      </div>
+      <Skeleton className="h-40 w-full rounded-[28px]" />
+      <div className="grid grid-cols-2 gap-4">
+        <Skeleton className="h-32 rounded-[24px]" />
+        <Skeleton className="h-32 rounded-[24px]" />
+        <Skeleton className="h-32 rounded-[24px]" />
+        <Skeleton className="h-32 rounded-[24px]" />
+      </div>
+    </div>
+  );
+}
+
+function defer(callback: () => void) {
+  queueMicrotask(callback);
+}
 
 function getViewFromPath(pathname: string): ViewType | null {
   const entry = Object.entries(viewPaths).find(([, path]) => path === pathname);
@@ -82,21 +116,21 @@ export default function App() {
     if (isAuthLoading) return;
 
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                  ('standalone' in window.navigator && (window.navigator as any).standalone === true);
+                  ('standalone' in window.navigator && (window.navigator as NavigatorWithStandalone).standalone === true);
     const pathView = getViewFromPath(window.location.pathname);
 
     if (isAuthenticated) {
       const nextView = !pathView || pathView === 'landing' || pathView === 'login' ? 'dashboard' : pathView;
-      navigateToView(nextView, true);
+      defer(() => navigateToView(nextView, true));
       return;
     }
 
     if (pathView && protectedViews.has(pathView)) {
-      navigateToView('login', true);
+      defer(() => navigateToView('login', true));
       return;
     }
 
-    navigateToView(pathView || (isPWA ? 'login' : 'landing'), true);
+    defer(() => navigateToView(pathView || (isPWA ? 'login' : 'landing'), true));
   }, [isAuthenticated, isAuthLoading, navigateToView]);
 
   useEffect(() => {
@@ -108,7 +142,7 @@ export default function App() {
     navigateToView('dashboard', true);
   };
 
-  const renderView = () => {
+  const renderView = (): ReactNode => {
     switch (currentView) {
       case 'landing': return <LandingPage onEnter={() => navigateToView('login')} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />;
       case 'login': return <LoginPage onLogin={handleLoginSuccess} />;
@@ -120,28 +154,6 @@ export default function App() {
       default: return <LandingPage onEnter={() => setCurrentView('login')} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />;
     }
   };
-
-  const PageLoader = () => (
-    <div className="absolute inset-0 w-full h-full bg-[#FAF9F6] dark:bg-[#121413] z-50 p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Skeleton className="w-12 h-12 rounded-[20px]" />
-          <div className="space-y-2">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-5 w-44 max-w-[54vw]" />
-          </div>
-        </div>
-        <Skeleton className="w-10 h-10 rounded-[16px]" />
-      </div>
-      <Skeleton className="h-40 w-full rounded-[28px]" />
-      <div className="grid grid-cols-2 gap-4">
-        <Skeleton className="h-32 rounded-[24px]" />
-        <Skeleton className="h-32 rounded-[24px]" />
-        <Skeleton className="h-32 rounded-[24px]" />
-        <Skeleton className="h-32 rounded-[24px]" />
-      </div>
-    </div>
-  );
 
   if (isAuthLoading) {
     return showSplash ? (

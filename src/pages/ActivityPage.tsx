@@ -6,7 +6,7 @@ import { vitaraApi } from '@/services/api';
 import ActivityChart from '@/components/activity/ActivityChart';
 import RecentHistory from '@/components/activity/RecentHistory';
 import Skeleton from '@/components/ui/Skeleton';
-import type { ActivityChartPoint, ActivityDataResponse, ActivityHistoryItem, ActivityType } from '@/types/api';
+import type { ActivityChartPoint, ActivityDataResponse, ActivityHistoryItem } from '@/types/api';
 import type { VeeOverrideState } from '@/utils/veeLogic';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -132,7 +132,7 @@ function buildLocalActivityData(activityHistory: ActivityLog[]): ActivityDataRes
 
   const history: ActivityHistoryItem[] = activityHistory.slice(0, 6).map((log) => ({
     id: log.id,
-    type: log.type as ActivityType,
+    type: log.type,
     title: getHistoryTitle(log),
     time: formatHistoryTime(log.timestamp),
     score: getHistoryScore(log),
@@ -164,7 +164,7 @@ export default function ActivityPage() {
 
   useEffect(() => {
     if (hasFreshCache) {
-      setIsLoading(false);
+      queueMicrotask(() => setIsLoading(false));
       return;
     }
 

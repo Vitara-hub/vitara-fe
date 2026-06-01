@@ -8,47 +8,50 @@ import type { VeeHealthStatus } from '@/store/useStore';
 export interface VeeMascotProps {
   data?: DashboardData;
   overrideState?: VeeOverrideState;
+  outfit?: 'default' | 'doctor';
   isTyping?: boolean;
   isEating?: boolean;
   isSleeping?: boolean;
-  isSyncing?: boolean; 
-  isOffline?: boolean; 
+  isSyncing?: boolean;
+  isOffline?: boolean;
   veeHealth?: VeeHealthStatus;
   weight?: number;
   scale?: number;
-  isWalking?: boolean; 
+  isWalking?: boolean;
   jumpDirection?: 'fromLeft' | 'fromRight' | 'none' | null;
   eyeLookX?: number;
   eyeLookY?: number;
-  isEcoMode?: boolean; 
+  isEcoMode?: boolean;
   ignoreSystemStatus?: boolean;
 }
 
-export default function VeeMascot({ 
+export default function VeeMascot({
   data,
   overrideState,
-  isTyping = false, 
-  isEating = false, 
-  isSleeping = false, 
-  isSyncing = false, 
-  isOffline = false, 
-  veeHealth = 'fresh', 
-  weight = 1, 
-  scale = 1, 
-  isWalking = false, 
+  outfit = 'default',
+  isTyping = false,
+  isEating = false,
+  isSleeping = false,
+  isSyncing = false,
+  isOffline = false,
+  veeHealth = 'fresh',
+  weight = 1,
+  scale = 1,
+  isWalking = false,
   jumpDirection = null,
-  eyeLookX = 0, 
+  eyeLookX = 0,
   eyeLookY = 0,
   isEcoMode = false,
   ignoreSystemStatus = false
 }: VeeMascotProps) {
   const faceRef = useRef<HTMLDivElement>(null);
-  const isServerDown = useStore((state) => state.isServerDown); 
+  const isServerDown = useStore((state) => state.isServerDown);
 
-  const [isBrowserOffline, setIsBrowserOffline] = useState<boolean>(false);
+  const [isBrowserOffline, setIsBrowserOffline] = useState<boolean>(() => (
+    typeof navigator !== 'undefined' ? !navigator.onLine : false
+  ));
 
   useEffect(() => {
-    setIsBrowserOffline(!navigator.onLine);
     const handleOnline = () => setIsBrowserOffline(false);
     const handleOffline = () => setIsBrowserOffline(true);
     window.addEventListener('online', handleOnline);
@@ -70,7 +73,7 @@ export default function VeeMascot({
   const finalExpression = activeSleeping ? 'yawn' : activeEating ? 'hungry' : expression;
 
   const color = offlineActive ? '#B0C4DE' : baseColorClass;
-  const ahogeColor = color; 
+  const ahogeColor = color;
 
   const [walkX, setWalkX] = useState<number>(0);
   const [facing, setFacing] = useState<number>(1);
@@ -93,9 +96,9 @@ export default function VeeMascot({
     const updatePosition = () => {
       const diff = targetX.current - currentX.current;
       if (Math.abs(diff) > 2) {
-        currentX.current += diff * 0.06; 
+        currentX.current += diff * 0.06;
         setWalkX(currentX.current);
-        setFacing(diff > 0 ? 1 : -1); 
+        setFacing(diff > 0 ? 1 : -1);
         setIsMoving(true);
       } else {
         setIsMoving(false);
@@ -108,10 +111,10 @@ export default function VeeMascot({
       window.removeEventListener('mousemove', handleMouseMove);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [isWalking, isEcoMode, offlineActive, isActuallySyncing]); 
+  }, [isWalking, isEcoMode, offlineActive, isActuallySyncing]);
 
   useEffect(() => {
-    if (!faceRef.current || offlineActive || isActuallySyncing || activeSleeping) return; 
+    if (!faceRef.current || offlineActive || isActuallySyncing || activeSleeping) return;
     faceRef.current.style.transform = `translate3d(${eyeLookX * facing}px, ${eyeLookY}px, 0)`;
   }, [eyeLookX, eyeLookY, facing, offlineActive, isActuallySyncing, activeSleeping]);
 
@@ -121,26 +124,26 @@ export default function VeeMascot({
     }
   };
 
-  const wobbleSpeed = offlineActive ? '6s' 
-    : activeSleeping ? '5s' 
-    : (isActuallySyncing && activeTyping) ? '0.5s' 
-    : isActuallySyncing ? '2.5s' 
-    : finalExpression === 'fresh' ? '1.2s' 
-    : activeTyping ? '0.8s' 
-    : activeEating ? '1.5s' 
+  const wobbleSpeed = offlineActive ? '6s'
+    : activeSleeping ? '5s'
+    : (isActuallySyncing && activeTyping) ? '0.5s'
+    : isActuallySyncing ? '2.5s'
+    : finalExpression === 'fresh' ? '1.2s'
+    : activeTyping ? '0.8s'
+    : activeEating ? '1.5s'
     : '4s';
-    
+
   const scaleY = activeEating ? 1.05 : activeSleeping ? 0.92 : 1;
   const strokeColor = "#1A3024";
 
   return (
-    <div 
+    <div
       onClick={handleMascotTouch}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMascotTouch(); } }}
       tabIndex={0}
       role="button"
       aria-label={`Maskot Vee. Status: ${offlineActive ? 'Offline / Server Down' : isActuallySyncing ? 'Loading' : veeHealth}.`}
-      style={{ transform: `translateX(${walkX}px) scale(${scale})` }} 
+      style={{ transform: `translateX(${walkX}px) scale(${scale})` }}
       className={`will-change-transform z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#8CE0A7] rounded-[40%] transition-all duration-700 ${offlineActive ? 'opacity-50 grayscale-[50%]' : ''}`}
     >
       <div
@@ -151,12 +154,12 @@ export default function VeeMascot({
         `}
         style={{ transform: `scaleX(${facing})`, '--facing': facing } as React.CSSProperties}
       >
-        
-        <div 
+
+        <div
           aria-hidden="true"
           className="absolute w-[40px] h-[40px] z-20"
           style={{
-            top: '-28px', left: '12px', 
+            top: '-28px', left: '12px',
             animation: `ahogeReactSideInverted ${wobbleSpeed} ease-in-out infinite alternate`,
             transformOrigin: 'bottom center',
             transform: activeSleeping ? 'translateY(18px) rotate(-60deg) scale(0.7)' : 'rotate(-15deg)'
@@ -191,10 +194,23 @@ export default function VeeMascot({
             <div className="absolute top-3.5 left-12 w-3 h-2 bg-white/60 rounded-full rotate-[10deg] blur-[0.5px]"></div>
             <div className="absolute bottom-[-10%] left-[10%] w-[80%] h-[60%] bg-[#1A3024] opacity-10 rounded-[100%] blur-md"></div>
 
-            <div className="absolute inset-0 w-full h-full flex items-center justify-center" style={{ transform: `scaleX(${1 / weight})` }}>
+
+            {outfit === 'doctor' && !offlineActive && !activeSleeping && (
+              <div className="absolute bottom-0 left-0 w-full h-[55%] z-[5] overflow-hidden opacity-95">
+                <svg viewBox="0 0 100 50" preserveAspectRatio="none" className="w-full h-full">
+                  <path d="M 0,50 L 30,0 L 50,22 L 70,0 L 100,50 Z" fill="#F1F5F9" />
+                  <path d="M 30,0 L 50,22 L 70,0" fill="none" stroke="#CBD5E1" strokeWidth="1.5" />
+                  <path d="M 20,0 C 20,38 80,38 80,0" fill="none" stroke="#334155" strokeWidth="2.5" />
+                  <path d="M 50,25 L 50,38" fill="none" stroke="#334155" strokeWidth="2.5" />
+                  <circle cx="50" cy="42" r="4.5" fill="#94A3B8" stroke="#334155" strokeWidth="1.5" />
+                </svg>
+              </div>
+            )}
+
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center z-10" style={{ transform: `scaleX(${1 / weight})` }}>
               <div ref={faceRef} className="relative w-16 h-10 mt-6 will-change-transform" style={{ transition: 'transform 0.05s linear' }}>
                 <svg width="100%" height="100%" viewBox="0 0 64 40" className="overflow-visible z-10 relative">
-                  
+
                   {offlineActive ? (
                     <g opacity="0.4">
                       <line x1="14" y1="22" x2="20" y2="22" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" />
@@ -215,10 +231,20 @@ export default function VeeMascot({
                       <path d="M 12,18 Q 17,21 22,20" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" />
                       <path d="M 42,20 Q 47,21 52,18" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" />
                     </g>
-                  ) : finalExpression === 'hungry' || finalExpression === 'empathetic' || finalExpression === 'stressed' ? (
+                  ) : finalExpression === 'hungry' || finalExpression === 'stressed' ? (
                     <g>
                       <path d="M 12,17 L 18,20 L 12,23" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                       <path d="M 52,17 L 46,20 L 52,23" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </g>
+                  ) : finalExpression === 'empathetic' || finalExpression === 'concerned' ? (
+                    <g>
+                      <path d="M 12,18 Q 17,16 22,19" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" />
+                      <path d="M 42,19 Q 47,16 52,18" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" />
+                    </g>
+                  ) : finalExpression === 'calm' ? (
+                    <g>
+                      <path d="M 12,20 Q 17,23 22,20" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" />
+                      <path d="M 42,20 Q 47,23 52,20" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" />
                     </g>
                   ) : (
                     <g>
@@ -251,7 +277,9 @@ export default function VeeMascot({
                       {finalExpression === 'fresh' && <path d="M 26,26 Q 32,32 38,26" />}
                       {finalExpression === 'hungry' && <path d="M 26,28 L 38,28" className={activeEating ? "animate-pulse" : ""} />}
                       {finalExpression === 'tired' && <path d="M 26,30 Q 32,26 38,30" />}
-                      {finalExpression === 'empathetic' && <path d="M 28,28 Q 32,30 36,28" strokeWidth="2" />}
+                      {finalExpression === 'empathetic' && <path d="M 28,28 Q 32,29 36,28" strokeWidth="2.5" />}
+                      {finalExpression === 'concerned' && <path d="M 28,29 Q 32,27 36,29" strokeWidth="2" />}
+                      {finalExpression === 'calm' && <path d="M 28,27 Q 32,30 36,27" strokeWidth="2" />}
                       {finalExpression === 'stressed' && <path d="M 26,28 L 38,28" />}
                       {finalExpression === 'yawn' && <ellipse cx="32" cy="28" rx="3" ry="5" fill={strokeColor} />}
                     </g>
@@ -268,13 +296,13 @@ export default function VeeMascot({
             </div>
           </div>
         </div>
-        
+
         {activeSleeping && (
           <div className="absolute top-2 -right-4 text-[#244135]/60 dark:text-stone-300/60 font-black animate-[ping_3s_infinite_ease-in-out] z-30">
             Z<span className="text-sm">z</span><span className="text-xs">z</span>
           </div>
         )}
-        
+
       </div>
 
       <style>{`

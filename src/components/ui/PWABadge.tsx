@@ -26,7 +26,7 @@ export default function PWABadge() {
 
       <button
         type="button"
-        onClick={() => updateServiceWorker(true)}
+        onClick={() => { void updateServiceWorker(true); }}
         className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-[#8CE0A7] px-3 text-sm font-semibold text-[#173326] transition hover:bg-[#7BD396] focus:outline-none focus:ring-2 focus:ring-[#8CE0A7] focus:ring-offset-2 focus:ring-offset-[#FAF9F6] dark:focus:ring-offset-[#18211C]"
       >
         <RefreshCw className="h-4 w-4" aria-hidden="true" />

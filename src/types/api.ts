@@ -93,7 +93,7 @@ export interface FoodLogItem {
   protein: number;
   carbs: number;
   fat: number;
-  source: 'manual' | 'image' | string;
+  source: string;
   consumedAt: string;
   createdAt: string;
   imageUrl: string | null;

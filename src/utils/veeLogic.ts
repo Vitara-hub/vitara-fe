@@ -7,7 +7,7 @@ export type DashboardData = DashboardTodayResponse;
 export interface VeeOverrideState {
   baseColorClass?: string;
   activeTraits?: string[];
-  expression?: 'fresh' | 'hungry' | 'tired' | 'empathetic' | 'yawn' | 'stressed'; 
+  expression?: 'fresh' | 'hungry' | 'tired' | 'empathetic' | 'concerned' | 'calm' | 'yawn' | 'stressed';
 }
 
 type DashboardBreakdownWithScores = Partial<DashboardTodayResponse['breakdown']> & {
@@ -105,7 +105,7 @@ export function calculateFinalVeeState(
   const stressLabel = normalizeText(data?.breakdown?.stressLabel);
   const nutritionKcal = toFiniteNumber(data?.breakdown?.nutritionKcal);
   const sleepHours = toFiniteNumber(data?.breakdown?.sleepHours);
-  
+
   const isStressed =
     effectiveHealthStatus === 'stressed' ||
     includesAny(stressLabel, ['tinggi', 'berat', 'high', 'stres']);
@@ -120,13 +120,13 @@ export function calculateFinalVeeState(
   }
 
   const activeTraits = new Set<string>(override?.activeTraits || []);
-  
+
   const isSleepDeprived =
     effectiveHealthStatus === 'tired' || (sleepHours !== null && sleepHours < 6);
   if (isSleepDeprived) {
     activeTraits.add('eye-bags');
   }
-  
+
   if (isStressed || stressLabel === 'sedang') {
     activeTraits.add('sweat');
   }
@@ -148,6 +148,6 @@ export function calculateFinalVeeState(
   return {
     baseColorClass,
     activeTraits: Array.from(activeTraits),
-    expression: expression as VeeOverrideState['expression']
+    expression
   };
 }

@@ -1,6 +1,6 @@
 // src/pages/LandingPage.tsx
 import { useRef, useEffect, MouseEvent as ReactMouseEvent } from 'react';
-import useVeePhysics from '@/hooks/useVeePhysics'; 
+import useVeePhysics from '@/hooks/useVeePhysics';
 
 import VeeMascot from '@/components/mascot/VeeMascot';
 
@@ -24,8 +24,16 @@ export default function LandingPage({ onEnter, isDarkMode, toggleDarkMode }: Lan
   const customCursorRef = useRef<HTMLDivElement>(null);
 
   // 2. Fisika Mascot Vee (Hooks)
-  const veePhysicsProps = useVeePhysics();
-  const landingVeeHealth = veePhysicsProps.isDizzy || veePhysicsProps.isMouseDown ? 'stressed' : 'fresh';
+  const {
+    veeRef,
+    eyePosition,
+    isMouseDown,
+    isVeeBooped,
+    isVeeTickled,
+    veeHandlers,
+    isDizzy,
+  } = useVeePhysics();
+  const landingVeeHealth = isDizzy || isMouseDown ? 'stressed' : 'fresh';
 
   // 3. Scroll Reveal Observer
   useEffect(() => {
@@ -37,7 +45,7 @@ export default function LandingPage({ onEnter, isDarkMode, toggleDarkMode }: Lan
         }
       });
     }, { threshold: 0.15 });
-    
+
     document.querySelectorAll('.reveal-on-scroll').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
@@ -56,7 +64,7 @@ export default function LandingPage({ onEnter, isDarkMode, toggleDarkMode }: Lan
   }, []);
 
   return (
-    <div 
+    <div
       id="landing-scroll-container"
       ref={scrollContainerRef}
       onMouseMove={handleGlobalMouseMove}
@@ -88,31 +96,31 @@ export default function LandingPage({ onEnter, isDarkMode, toggleDarkMode }: Lan
         .animate-fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(5px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
       `}</style>
-      
+
       <div ref={customCursorRef} className="hidden md:flex fixed pointer-events-none z-[999] w-8 h-8 rounded-full bg-[#1DB38A]/40 dark:bg-[#8CE0A7]/40 blur-md transition-transform duration-75 ease-out items-center justify-center mix-blend-multiply dark:mix-blend-screen top-0 left-0">
         <div className="w-1.5 h-1.5 bg-[#2B4B3D] dark:bg-white rounded-full"></div>
       </div>
 
       {/* VEE MASCOT TINGKAT ROOT */}
-      <div 
-        ref={veePhysicsProps.veeRef as React.RefObject<HTMLDivElement>}
-        {...veePhysicsProps.veeHandlers}
-        className={`fixed top-0 left-0 w-[160px] h-[160px] md:w-[240px] md:h-[240px] flex items-center justify-center z-[100] touch-none select-none drop-shadow-2xl ${veePhysicsProps.isMouseDown ? 'cursor-grabbing' : 'cursor-grab'} opacity-100`}
+      <div
+        ref={veeRef}
+        {...veeHandlers}
+        className={`fixed top-0 left-0 w-[160px] h-[160px] md:w-[240px] md:h-[240px] flex items-center justify-center z-[100] touch-none select-none drop-shadow-2xl ${isMouseDown ? 'cursor-grabbing' : 'cursor-grab'} opacity-100`}
       >
-        <div className={`transition-transform duration-200 ${veePhysicsProps.isMouseDown ? 'scale-90' : 'scale-100'}`}>
-          <div className={`origin-bottom transition-transform duration-200 ${veePhysicsProps.isVeeBooped ? 'scale-x-[1.2] scale-y-[0.8] translate-y-2' : 'scale-100'} ${veePhysicsProps.isVeeTickled && !veePhysicsProps.isVeeBooped ? 'animate-tickle' : ''}`}>
-            <VeeMascot 
+        <div className={`transition-transform duration-200 ${isMouseDown ? 'scale-90' : 'scale-100'}`}>
+          <div className={`origin-bottom transition-transform duration-200 ${isVeeBooped ? 'scale-x-[1.2] scale-y-[0.8] translate-y-2' : 'scale-100'} ${isVeeTickled && !isVeeBooped ? 'animate-tickle' : ''}`}>
+            <VeeMascot
               ignoreSystemStatus={true}
-              jumpDirection="none" 
-              scale={1.5} 
-              isOffline={false} 
-              isSyncing={false} 
-              isEcoMode={false} 
+              jumpDirection="none"
+              scale={1.5}
+              isOffline={false}
+              isSyncing={false}
+              isEcoMode={false}
               overrideState={landingVeeHealth === 'stressed' ? undefined : { expression: 'fresh', baseColorClass: '#8CE0A7' }}
-              veeHealth={landingVeeHealth} 
-              weight={1} 
-              eyeLookX={veePhysicsProps.eyePosition.x} 
-              eyeLookY={veePhysicsProps.eyePosition.y} 
+              veeHealth={landingVeeHealth}
+              weight={1}
+              eyeLookX={eyePosition.x}
+              eyeLookY={eyePosition.y}
             />
           </div>
         </div>
