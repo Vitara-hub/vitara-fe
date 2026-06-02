@@ -49,7 +49,7 @@ function includesAny(value: string, keywords: string[]) {
 export function deriveVeeHealthFromDashboard(
   dashboardData: DashboardTodayResponse | null
 ): VeeHealthStatus {
-  if (!dashboardData || !hasMeaningfulValue(dashboardData)) return 'waiting';
+  if (!dashboardData || !hasMeaningfulValue(dashboardData)) return 'fresh';
 
   const data = dashboardData as DashboardWithOptionalScores;
   const breakdown = data.breakdown ?? null;
@@ -62,7 +62,7 @@ export function deriveVeeHealthFromDashboard(
   );
 
   if (healthScore === 0) {
-    return hasSupportingData ? 'sick' : 'waiting';
+    return hasSupportingData ? 'sick' : 'fresh';
   }
 
   const stressScore = toFiniteNumber(breakdown?.stressScore ?? breakdown?.stress);

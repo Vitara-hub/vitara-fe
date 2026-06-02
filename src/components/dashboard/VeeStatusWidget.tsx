@@ -76,7 +76,7 @@ export default function VeeStatusWidget({
   }, []);
 
   const healthData: Record<VeeHealthStatus, StatusData> = {
-    fresh: { score: 85, text: 'Sehat & Senang', color: 'text-[#1DB38A] bg-[#E6F7ED] dark:text-[#8CE0A7] dark:bg-[#1A2620]', advice: 'Vee kelihatan sangat sehat hari ini! Terus pertahankan rutinitas baikmu.', glow: 'rgba(140, 224, 167, 0.4)' },
+    fresh: { score: 100, text: 'Prima', color: 'text-[#1DB38A] bg-[#E6F7ED] dark:text-[#8CE0A7] dark:bg-[#1A2620]', advice: 'Vee dalam kondisi prima! Yuk, mulai isi jurnal pertamamu.', glow: 'rgba(140, 224, 167, 0.4)' },
     tired: { score: 45, text: 'Kurang Tidur', color: 'text-[#4A7A8C] bg-[#EEF2F5] dark:text-[#8CAAB8] dark:bg-[#1A1D20]', advice: 'Vee kelihatan pucat dan punya kantong mata. Usahakan malam ini istirahat lebih awal ya.', glow: 'rgba(140, 170, 184, 0.4)' },
     sick: { score: 30, text: 'Sakit', color: 'text-[#4A7A8C] bg-[#EEF2F5] dark:text-[#8CAAB8] dark:bg-[#1A1D20]', advice: 'Kondisi kesehatanmu sedang menurun drastis. Segera istirahat total ya!', glow: 'rgba(140, 170, 184, 0.4)' },
     stressed: { score: 60, text: 'Banyak Pikiran', color: 'text-[#D96B2B] bg-[#FFF0E6] dark:text-[#FF9F66] dark:bg-[#2A1E18]', advice: 'Vee ikutan kepanasan gara-gara kamu lagi stres. Coba tarik napas dalam-dalam atau dengerin lagu santai.', glow: 'rgba(255, 159, 102, 0.4)' },

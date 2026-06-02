@@ -22,6 +22,7 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
   const {
     user,
     veeWeight,
+    activityHistory,
     dashboardHealthScore,
     activityData,
     setDashboardHealthScore,
@@ -76,10 +77,19 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
   ]);
 
   const isLoading = isSyncing && !dashboardData;
+  const hasActivityHistory =
+    activityHistory.length > 0 || (activityData.data?.history.length ?? 0) > 0;
+  const isPristineDashboard = !hasActivityHistory && !errorMessage;
   const dashboardVeeHealth = errorMessage
     ? 'waiting'
-    : deriveVeeHealthFromDashboard(dashboardData);
-  const hasActivityHistory = (activityData.data?.history.length ?? 0) > 0;
+    : isPristineDashboard
+      ? 'fresh'
+      : deriveVeeHealthFromDashboard(dashboardData);
+  const displayHealthScore = isPristineDashboard ? 100 : dashboardData?.healthScore;
+  const displayStatusLabel = isPristineDashboard ? 'Prima' : dashboardData?.statusLabel;
+  const displaySuggestion = isPristineDashboard
+    ? 'Vee dalam kondisi prima! Yuk, mulai isi jurnal pertamamu.'
+    : dashboardData?.suggestion;
 
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-6 space-y-6">
@@ -100,14 +110,14 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
       <VeeStatusWidget 
         veeHealth={dashboardVeeHealth} 
         veeWeight={veeWeight} 
-        realScore={dashboardData?.healthScore}
+        realScore={displayHealthScore}
         isSyncing={isLoading}
-        statusLabel={dashboardData?.statusLabel}
-        suggestion={dashboardData?.suggestion}
+        statusLabel={displayStatusLabel}
+        suggestion={displaySuggestion}
       />
 
       <PillarsGrid
-        breakdown={dashboardData?.breakdown}
+        breakdown={isPristineDashboard ? undefined : dashboardData?.breakdown}
         isSyncing={isLoading}
         hasActivityHistory={hasActivityHistory}
       />
