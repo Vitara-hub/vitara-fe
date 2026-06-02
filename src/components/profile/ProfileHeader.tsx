@@ -9,9 +9,10 @@ interface ProfileHeaderProps {
 }
 
 export default function ProfileHeader({ user, isLoading = false }: ProfileHeaderProps) {
+  const displayName = user?.displayName?.trim() || user?.name?.trim() || user?.username?.trim() || 'User';
   const avatarSeed = encodeURIComponent(user?.username || user?.email || user?.uid || 'vitara-user');
   const avatarSrc = user?.imageUrl?.trim() || `https://api.dicebear.com/7.x/notionists/svg?seed=${avatarSeed}`;
-  const avatarAlt = `${user?.username || user?.displayName || 'Vitara user'}'s avatar`;
+  const avatarAlt = `${user?.username || displayName}'s avatar`;
 
   return (
     <div className="bg-white dark:bg-[#1A1D1B] p-8 flex flex-col items-center border-b border-[#E8F0EA] dark:border-stone-800 min-h-[238px]">
@@ -33,10 +34,10 @@ export default function ProfileHeader({ user, isLoading = false }: ProfileHeader
           </div>
 
           <h1 className="mt-4 text-xl font-bold text-[#2B4B3D] dark:text-stone-50">
-            {user?.displayName || user?.name || 'Yunggi'}
+            {displayName}
           </h1>
           <p className="text-xs font-semibold text-[#8CAAB8] uppercase tracking-wider text-center mt-1">
-            {user?.email || 'Full-Stack Developer & Security Researcher'}
+            {user?.email || ''}
           </p>
         </>
       )}
