@@ -12,7 +12,12 @@ import {
 import { isApiConfigured, resetChatSession, vitaraApi } from '@/services/api';
 import { mapActivityFeed } from '@/utils/activityMapper';
 import type { AuthMeResponse, AuthTokensResponse, UserMetadata } from '@/types/api';
-import type { ActivityDataResponse, ChatHistoryMessage, DashboardTodayResponse } from '@/types/api';
+import type {
+  ActivityDataResponse,
+  ActivityHistoryItem,
+  ChatHistoryMessage,
+  DashboardTodayResponse,
+} from '@/types/api';
 
 export interface BaseActivityLog { 
   id: number; 
@@ -93,6 +98,75 @@ async function applyAuthTokens(tokens: AuthTokensResponse): Promise<AuthUser> {
 
 function emptyCacheEntry<T>(): CacheEntry<T> {
   return { data: null, fetchedAt: null };
+}
+
+function formatActivityTime(timestamp: string) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return 'Waktu tidak tersedia';
+
+  return date.toLocaleString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function getActivityTitle(log: ActivityLog) {
+  if (log.type === 'journal') return 'Jurnal Sentimen';
+  if (log.type === 'sleep') return 'Kualitas Tidur';
+  if (log.type === 'food') return 'Nutrition Lens';
+  return 'Percakapan Vee';
+}
+
+function getActivityScore(log: ActivityLog) {
+  if (log.type === 'journal') return log.emotion ?? 'Tercatat';
+  if (log.type === 'sleep') return typeof log.qualityScore === 'number' ? `${log.qualityScore}/100` : 'Pending';
+  if (log.type === 'food') return typeof log.calories === 'number' ? `${log.calories} kcal` : 'Tercatat';
+  return log.syncStatus === 'pending' ? 'Pending' : 'Tersimpan';
+}
+
+function mapLocalActivityLog(log: ActivityLog): ActivityHistoryItem {
+  return {
+    id: `local-${log.id}`,
+    type: log.type,
+    title: getActivityTitle(log),
+    time: formatActivityTime(log.timestamp),
+    score: getActivityScore(log),
+  };
+}
+
+function isSameActivityItem(left: ActivityHistoryItem, right: ActivityHistoryItem) {
+  return (
+    left.type === right.type &&
+    left.title === right.title &&
+    left.time === right.time &&
+    String(left.score) === String(right.score)
+  );
+}
+
+function mergeLocalActivityLogs(
+  data: ActivityDataResponse | null,
+  activityHistory: ActivityLog[],
+): ActivityDataResponse | null {
+  const localItems = activityHistory.map(mapLocalActivityLog);
+  if (!data) {
+    return localItems.length
+      ? { average_score: 0, weekly_change_percent: 0, chart: [], history: localItems }
+      : null;
+  }
+
+  const remoteIds = new Set(data.history.map((item) => String(item.id)));
+  const newLocalItems = localItems.filter(
+    (item) =>
+      !remoteIds.has(String(item.id)) &&
+      !data.history.some((remoteItem) => isSameActivityItem(item, remoteItem)),
+  );
+
+  return {
+    ...data,
+    history: [...newLocalItems, ...data.history],
+  };
 }
 
 function getLoggedOutState() {
@@ -209,7 +283,7 @@ interface StoreState {
 
 const useStore = create<StoreState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       isAuthenticated: false,
       isAuthLoading: true,
       user: null,
@@ -307,7 +381,15 @@ const useStore = create<StoreState>()(
           syncStatus: 'pending',
           ...log 
         } as ActivityLog;
-        return { activityHistory: [newLog, ...state.activityHistory] };
+        const nextActivityHistory = [newLog, ...state.activityHistory];
+
+        return {
+          activityHistory: nextActivityHistory,
+          activityData: {
+            data: mergeLocalActivityLogs(state.activityData.data, nextActivityHistory),
+            fetchedAt: Date.now(),
+          },
+        };
       }),
       clearHistory: () => set({ activityHistory: [] }),
 
@@ -321,9 +403,12 @@ const useStore = create<StoreState>()(
       setDashboardHealthScore: (data) => set({
         dashboardHealthScore: { data, fetchedAt: data ? Date.now() : null },
       }),
-      setActivityData: (data) => set({
-        activityData: { data, fetchedAt: data ? Date.now() : null },
-      }),
+      setActivityData: (data) => set((state) => ({
+        activityData: {
+          data: mergeLocalActivityLogs(data, state.activityHistory),
+          fetchedAt: data ? Date.now() : null,
+        },
+      })),
       setChatMessages: (data) => set({
         chatMessages: { data, fetchedAt: data ? Date.now() : null },
       }),
@@ -351,9 +436,11 @@ const useStore = create<StoreState>()(
           recentResult.status === 'fulfilled' &&
           summaryResult.status === 'fulfilled'
         ) {
+          const remoteActivityData = mapActivityFeed(dailyResult.value, recentResult.value, summaryResult.value);
+
           set({
             activityData: {
-              data: mapActivityFeed(dailyResult.value, recentResult.value, summaryResult.value),
+              data: mergeLocalActivityLogs(remoteActivityData, get().activityHistory),
               fetchedAt: Date.now(),
             },
           });
