@@ -24,7 +24,7 @@ export default function JournalTab({ jumpDirection, veeHealth, setVeeHealth, wei
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const { addLog, updateMetric, refreshDashboardAndActivity } = useStore();
-  const { metrics, handleKeyDown, resetTracker } = useKeystrokeTracker();
+  const { metrics, handleKeyDown, getSnapshot, resetTracker } = useKeystrokeTracker();
 
   const handleTextChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
@@ -46,11 +46,28 @@ export default function JournalTab({ jumpDirection, veeHealth, setVeeHealth, wei
   const handleSave = async () => {
     if (text.length < 10) return setPopup({ isOpen: true, type: 'error', title: 'Teks Terlalu Pendek', message: 'Ceritanya kurang panjang nih.' });
     
+    const typingSnapshot = getSnapshot();
+    const interKeyTimings =
+      typingSnapshot.interKeyTimings.length > 0
+        ? typingSnapshot.interKeyTimings
+        : [typingSnapshot.averageTimeBetweenKeysMs || 200];
+    const typingPayload = {
+      wpm: typingSnapshot.wpm,
+      duration: Math.max(1, Math.round(typingSnapshot.typingDurationMs / 1000)),
+      textContent: text,
+      backspaceRate: typingSnapshot.backspaceRate,
+      interKeyTimings,
+      total_keystrokes: typingSnapshot.totalKeystrokes,
+      backspace_count: typingSnapshot.backspaceCount,
+      typing_duration_ms: typingSnapshot.typingDurationMs,
+      average_time_between_keys_ms: typingSnapshot.averageTimeBetweenKeysMs,
+    };
+
     setIsAnalyzing(true);
     try {
       const [journalResult, typingResult] = await Promise.all([
         vitaraApi.predictJournal({ text }),
-        vitaraApi.predictTyping({ wpm: metrics.wpm, backspaceRate: metrics.backspaceRate, interKeyTimings: metrics.interKeyTimings.length > 0 ? metrics.interKeyTimings : [200] })
+        vitaraApi.predictTyping(typingPayload)
       ]);
       
       const avgStress = (journalResult.stressLevel + typingResult.stressScore) / 2;
@@ -79,12 +96,7 @@ export default function JournalTab({ jumpDirection, veeHealth, setVeeHealth, wei
         syncStatus: 'pending',
         pendingPayload: {
           text,
-          typing: {
-            wpm: metrics.wpm,
-            backspaceRate: metrics.backspaceRate,
-            interKeyTimings: metrics.interKeyTimings.length > 0 ? metrics.interKeyTimings : [200],
-            textContent: text,
-          },
+          typing: typingPayload,
         },
       });
 

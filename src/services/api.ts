@@ -398,6 +398,10 @@ export const vitaraApi = {
         textContent: data.textContent ?? 'Typing telemetry',
         backspaceRate: data.backspaceRate,
         interKeyTimings: data.interKeyTimings,
+        total_keystrokes: data.total_keystrokes,
+        backspace_count: data.backspace_count,
+        typing_duration_ms: data.typing_duration_ms,
+        average_time_between_keys_ms: data.average_time_between_keys_ms,
       },
     );
     const result = unwrap(response.data);

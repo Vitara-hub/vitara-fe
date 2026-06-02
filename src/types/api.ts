@@ -138,6 +138,10 @@ export interface TypingRequest {
   wpm: number;
   backspaceRate: number;
   interKeyTimings: number[];
+  total_keystrokes: number;
+  backspace_count: number;
+  typing_duration_ms: number;
+  average_time_between_keys_ms: number;
   duration?: number;
   textContent?: string;
 }

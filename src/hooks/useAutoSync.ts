@@ -27,7 +27,11 @@ function getPendingTypingPayload(log: ActivityLog): TypingRequest | null {
   if (
     typeof payload.wpm !== 'number' ||
     typeof payload.backspaceRate !== 'number' ||
-    !Array.isArray(payload.interKeyTimings)
+    !Array.isArray(payload.interKeyTimings) ||
+    typeof payload.total_keystrokes !== 'number' ||
+    typeof payload.backspace_count !== 'number' ||
+    typeof payload.typing_duration_ms !== 'number' ||
+    typeof payload.average_time_between_keys_ms !== 'number'
   ) {
     return null;
   }
@@ -36,6 +40,10 @@ function getPendingTypingPayload(log: ActivityLog): TypingRequest | null {
     wpm: payload.wpm,
     backspaceRate: payload.backspaceRate,
     interKeyTimings: payload.interKeyTimings,
+    total_keystrokes: payload.total_keystrokes,
+    backspace_count: payload.backspace_count,
+    typing_duration_ms: payload.typing_duration_ms,
+    average_time_between_keys_ms: payload.average_time_between_keys_ms,
     duration: payload.duration,
     textContent: payload.textContent,
   };

@@ -6,7 +6,11 @@ export interface KeystrokeMetrics {
   backspaceRate: number;
   interKeyTimings: number[];
   cpm: number;
-  backspaces: number; // <--- SUDAH MASUK DI SINI
+  totalKeystrokes: number;
+  backspaceCount: number;
+  typingDurationMs: number;
+  averageTimeBetweenKeysMs: number;
+  backspaces: number;
   pauses: number;
   realtimeMood: 'fresh' | 'tired' | 'stressed';
 }
@@ -14,7 +18,13 @@ export interface KeystrokeMetrics {
 export interface KeystrokeTrackerReturn {
   metrics: KeystrokeMetrics;
   handleKeyDown: (e: ReactKeyboardEvent<HTMLTextAreaElement>) => void;
+  getSnapshot: () => KeystrokeMetrics;
   resetTracker: () => void;
+}
+
+function average(values: number[]) {
+  if (values.length === 0) return 0;
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
 export const useKeystrokeTracker = (): KeystrokeTrackerReturn => {
@@ -23,6 +33,10 @@ export const useKeystrokeTracker = (): KeystrokeTrackerReturn => {
     backspaceRate: 0, 
     interKeyTimings: [], 
     cpm: 0, 
+    totalKeystrokes: 0,
+    backspaceCount: 0,
+    typingDurationMs: 0,
+    averageTimeBetweenKeysMs: 0,
     backspaces: 0, 
     pauses: 0, 
     realtimeMood: 'fresh',
@@ -36,6 +50,35 @@ export const useKeystrokeTracker = (): KeystrokeTrackerReturn => {
     pauseCount: 0,
     interKeyTimings: [] as number[]
   });
+
+  const buildSnapshot = useCallback((): KeystrokeMetrics => {
+    const data = dataRef.current;
+    const typingDurationMs = data.startTime ? Math.max(0, Date.now() - data.startTime) : 0;
+    const elapsedMinutes = typingDurationMs / 60000;
+    const currentCpm = elapsedMinutes > 0 ? Math.round(data.charCount / elapsedMinutes) : 0;
+    const wpm = Math.round(currentCpm / 5);
+    const totalKeystrokes = data.charCount + data.backspaceCount;
+    const backspaceRate = totalKeystrokes > 0 ? data.backspaceCount / totalKeystrokes : 0;
+    const averageTimeBetweenKeysMs = average(data.interKeyTimings);
+
+    let guess: 'fresh' | 'tired' | 'stressed' = 'fresh';
+    if (data.backspaceCount > 4 || currentCpm > 350) guess = 'stressed';
+    else if ((currentCpm > 0 && currentCpm < 120) || data.pauseCount > 2) guess = 'tired';
+
+    return {
+      cpm: currentCpm,
+      wpm,
+      backspaceRate,
+      interKeyTimings: [...data.interKeyTimings],
+      totalKeystrokes,
+      backspaceCount: data.backspaceCount,
+      typingDurationMs,
+      averageTimeBetweenKeysMs,
+      backspaces: data.backspaceCount,
+      pauses: data.pauseCount,
+      realtimeMood: guess,
+    };
+  }, []);
 
   const handleKeyDown = useCallback((e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
     const now = Date.now();
@@ -64,28 +107,11 @@ export const useKeystrokeTracker = (): KeystrokeTrackerReturn => {
       const data = dataRef.current;
       if (!data.startTime) return;
 
-      const elapsedMinutes = (Date.now() - data.startTime) / 60000;
-      const currentCpm = elapsedMinutes > 0 ? Math.round(data.charCount / elapsedMinutes) : 0;
-      const wpm = Math.round(currentCpm / 5);
-      const backspaceRate = data.charCount > 0 ? data.backspaceCount / data.charCount : 0;
-
-      let guess: 'fresh' | 'tired' | 'stressed' = 'fresh';
-      if (data.backspaceCount > 4 || currentCpm > 350) guess = 'stressed';
-      else if ((currentCpm > 0 && currentCpm < 120) || data.pauseCount > 2) guess = 'tired';
-
-      setMetrics({
-        cpm: currentCpm,
-        wpm,
-        backspaceRate,
-        interKeyTimings: [...data.interKeyTimings],
-        backspaces: data.backspaceCount, // <--- SUDAH DI-MAPPING DI SINI
-        pauses: data.pauseCount,
-        realtimeMood: guess,
-      });
+      setMetrics(buildSnapshot());
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [buildSnapshot]);
 
   const resetTracker = () => {
     dataRef.current = { 
@@ -101,11 +127,15 @@ export const useKeystrokeTracker = (): KeystrokeTrackerReturn => {
       backspaceRate: 0, 
       interKeyTimings: [], 
       cpm: 0, 
+      totalKeystrokes: 0,
+      backspaceCount: 0,
+      typingDurationMs: 0,
+      averageTimeBetweenKeysMs: 0,
       backspaces: 0, 
       pauses: 0, 
       realtimeMood: 'fresh' 
     });
   };
 
-  return { metrics, handleKeyDown, resetTracker };
+  return { metrics, handleKeyDown, getSnapshot: buildSnapshot, resetTracker };
 };
