@@ -29,7 +29,7 @@ const initialPopup: PopupState = {
 
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
-  const { user, isAuthLoading, establishSession } = useStore();
+  const { establishSession } = useStore();
   const [isLoginView, setIsLoginView] = useState<boolean>(true);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string>('');
@@ -53,10 +53,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       setIsAnimating(false);
     }, 300);
   };
-
-  useEffect(() => {
-    if (!isAuthLoading && user) onLogin?.();
-  }, [isAuthLoading, onLogin, user]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search || window.location.hash.replace('#', '?'));
@@ -109,7 +105,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         password,
       });
 
-      await establishSession(tokens);
+      const hydratedUser = await establishSession(tokens);
+      if (!hydratedUser.uid) throw new Error('Profile hydration failed.');
       onLogin?.();
     } catch (error) {
       if (isLoginView) {

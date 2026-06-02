@@ -83,11 +83,15 @@ async function bootstrapBackendProfile() {
   }
 }
 
+async function loadAuthenticatedProfile(): Promise<AuthUser> {
+  await bootstrapBackendProfile();
+  const profile = await vitaraApi.getMe();
+  return mapProfileUser(profile);
+}
+
 async function applyAuthTokens(tokens: AuthTokensResponse): Promise<AuthUser> {
   setAuthTokens(tokens);
-  const profile = await vitaraApi.getMe();
-  await bootstrapBackendProfile();
-  return mapProfileUser(profile);
+  return loadAuthenticatedProfile();
 }
 
 function emptyCacheEntry<T>(): CacheEntry<T> {
@@ -214,9 +218,16 @@ const useStore = create<StoreState>()(
       user: null,
       login: (user) => set({ isAuthenticated: true, isAuthLoading: false, user }),
       establishSession: async (tokens) => {
-        const user = await applyAuthTokens(tokens);
-        set({ isAuthenticated: true, isAuthLoading: false, user });
-        return user;
+        set({ isAuthenticated: false, isAuthLoading: true, user: null });
+        try {
+          const user = await applyAuthTokens(tokens);
+          set({ isAuthenticated: true, isAuthLoading: false, user });
+          return user;
+        } catch (error) {
+          clearAuthTokens();
+          set({ isAuthenticated: false, isAuthLoading: false, user: null });
+          throw error;
+        }
       },
       logout: async () => {
         if (hasAuthTokens()) {
@@ -260,11 +271,11 @@ const useStore = create<StoreState>()(
           }
 
           if (hasAuthTokens()) {
-            const profile = await vitaraApi.getMe();
+            const user = await loadAuthenticatedProfile();
             set({
               isAuthenticated: true,
               isAuthLoading: false,
-              user: mapProfileUser(profile),
+              user,
             });
             if (hasOAuthCallbackParams()) removeOAuthParamsFromUrl();
             return;
