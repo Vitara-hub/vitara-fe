@@ -161,6 +161,7 @@ export default function ActivityPage() {
   const observerVeeState: VeeOverrideState = { activeTraits: ['glasses'] };
 
   const localActivityData = useMemo(() => buildLocalActivityData(activityHistory), [activityHistory]);
+  const hasActivityLogs = activityData.history.length > 0;
 
   useEffect(() => {
     if (hasFreshCache) {
@@ -218,7 +219,8 @@ export default function ActivityPage() {
         weeklyChangePercent={activityData.weekly_change_percent}
         chartData={activityData.chart}
         isLoading={isLoading}
-        overrideState={!isLoading ? observerVeeState : undefined}
+        overrideState={!isLoading && hasActivityLogs ? observerVeeState : undefined}
+        hasData={hasActivityLogs}
       />
       <RecentHistory items={activityData.history} isLoading={isLoading} />
       

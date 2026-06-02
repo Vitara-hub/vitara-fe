@@ -12,6 +12,7 @@ interface VeeStatusWidgetProps {
   isSyncing?: boolean;
   statusLabel?: string;
   suggestion?: string;
+  hasData?: boolean;
 }
 
 interface StatusData { score: number | string; text: string; color: string; advice: string; glow: string; }
@@ -28,6 +29,7 @@ export default function VeeStatusWidget({
   isSyncing = false,
   statusLabel,
   suggestion,
+  hasData = true,
 }: VeeStatusWidgetProps) {
   const [eyePosition, setEyePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isVeeBooped, setIsVeeBooped] = useState<boolean>(false);
@@ -76,7 +78,7 @@ export default function VeeStatusWidget({
   }, []);
 
   const healthData: Record<VeeHealthStatus, StatusData> = {
-    fresh: { score: 100, text: 'Prima', color: 'text-[#1DB38A] bg-[#E6F7ED] dark:text-[#8CE0A7] dark:bg-[#1A2620]', advice: 'Vee dalam kondisi prima! Yuk, mulai isi jurnal pertamamu.', glow: 'rgba(140, 224, 167, 0.4)' },
+    fresh: { score: 85, text: 'Sehat & Senang', color: 'text-[#1DB38A] bg-[#E6F7ED] dark:text-[#8CE0A7] dark:bg-[#1A2620]', advice: 'Vee kelihatan sangat sehat hari ini! Terus pertahankan rutinitas baikmu.', glow: 'rgba(140, 224, 167, 0.4)' },
     tired: { score: 45, text: 'Kurang Tidur', color: 'text-[#4A7A8C] bg-[#EEF2F5] dark:text-[#8CAAB8] dark:bg-[#1A1D20]', advice: 'Vee kelihatan pucat dan punya kantong mata. Usahakan malam ini istirahat lebih awal ya.', glow: 'rgba(140, 170, 184, 0.4)' },
     sick: { score: 30, text: 'Sakit', color: 'text-[#4A7A8C] bg-[#EEF2F5] dark:text-[#8CAAB8] dark:bg-[#1A1D20]', advice: 'Kondisi kesehatanmu sedang menurun drastis. Segera istirahat total ya!', glow: 'rgba(140, 170, 184, 0.4)' },
     stressed: { score: 60, text: 'Banyak Pikiran', color: 'text-[#D96B2B] bg-[#FFF0E6] dark:text-[#FF9F66] dark:bg-[#2A1E18]', advice: 'Vee ikutan kepanasan gara-gara kamu lagi stres. Coba tarik napas dalam-dalam atau dengerin lagu santai.', glow: 'rgba(255, 159, 102, 0.4)' },
@@ -84,17 +86,20 @@ export default function VeeStatusWidget({
     waiting: { score: '--', text: 'Menunggu Sync', color: 'text-[#647C73] bg-[#E8ECEA] dark:text-[#8CAAB8] dark:bg-[#1A1D20]', advice: 'Otak AI Vee sedang offline. Data aktivitasmu aman di perangkat dan akan dianalisis saat koneksi kembali.', glow: 'rgba(100, 124, 115, 0.2)' }
   };
 
-  const currentStatus = healthData[veeHealth] || healthData['fresh'];
-  const displayStatusLabel = statusLabel || currentStatus.text;
-  const displaySuggestion = suggestion || currentStatus.advice;
+  const displayHealth = hasData ? veeHealth : 'waiting';
+  const currentStatus = hasData ? (healthData[veeHealth] || healthData['fresh']) : healthData.waiting;
+  const displayStatusLabel = hasData ? (statusLabel || currentStatus.text) : 'Belum ada skor';
+  const displaySuggestion = hasData
+    ? (suggestion || currentStatus.advice)
+    : 'Belum ada data. Yuk, isi jurnal pertamamu hari ini!';
   
   // Jika offline (tidak ada realScore dan status waiting), tampilkan garis putus-putus
-  const displayScore = veeHealth === 'waiting' ? '--' : toDisplayScore(realScore, currentStatus.score);
+  const displayScore = !hasData ? '-' : displayHealth === 'waiting' ? '--' : toDisplayScore(realScore, currentStatus.score);
 
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-[#1A1D1B] rounded-[28px] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.03)] flex items-center justify-between relative overflow-hidden hover:shadow-xl group" style={{ boxShadow: `0 8px 32px ${currentStatus.glow}` }}>
-        <div className="absolute -right-10 -top-10 w-32 h-32 opacity-20 rounded-full blur-2xl transition-colors duration-500" style={{ backgroundColor: veeHealth === 'tired' ? '#8CAAB8' : veeHealth === 'stressed' ? '#FF9F66' : veeHealth === 'waiting' ? '#647C73' : '#8CE0A7' }}></div>
+        <div className="absolute -right-10 -top-10 w-32 h-32 opacity-20 rounded-full blur-2xl transition-colors duration-500" style={{ backgroundColor: displayHealth === 'tired' ? '#8CAAB8' : displayHealth === 'stressed' ? '#FF9F66' : displayHealth === 'waiting' ? '#647C73' : '#8CE0A7' }}></div>
         
         {isSyncing ? (
           <div className="relative z-10 space-y-3">
@@ -109,10 +114,10 @@ export default function VeeStatusWidget({
               <p className="text-4xl font-black text-[#244135] dark:text-stone-50 leading-none">
               {displayScore}
             </p>
-              <span className="text-sm font-bold text-[#647C73] dark:text-stone-500">/100</span>
+              {hasData && <span className="text-sm font-bold text-[#647C73] dark:text-stone-500">/100</span>}
             </div>
             <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold ${currentStatus.color} transition-colors duration-300`}>
-              {veeHealth === 'waiting' ? <CloudOff size={12} strokeWidth={3} /> : <Activity size={12} strokeWidth={3} />} 
+              {displayHealth === 'waiting' ? <CloudOff size={12} strokeWidth={3} /> : <Activity size={12} strokeWidth={3} />} 
               {displayStatusLabel}
             </div>
           </div>
@@ -123,7 +128,7 @@ export default function VeeStatusWidget({
             <Skeleton className="w-24 h-24 rounded-full bg-[#E8F0EA] dark:bg-[#1A2620]" />
           ) : (
             <div className={`transition-transform duration-200 ${isVeeBooped ? 'scale-x-[1.2] scale-y-[0.8] translate-y-1' : 'scale-100 group-hover:scale-110'}`}>
-              <VeeMascot veeHealth={veeHealth} scale={0.9} weight={veeWeight} eyeLookX={eyePosition.x} eyeLookY={eyePosition.y} />
+              <VeeMascot veeHealth={displayHealth} scale={0.9} weight={veeWeight} eyeLookX={eyePosition.x} eyeLookY={eyePosition.y} />
             </div>
           )}
         </div>
@@ -142,10 +147,10 @@ export default function VeeStatusWidget({
         ) : (
           <>
             <div className="bg-white/60 dark:bg-white/10 p-2.5 rounded-[14px] text-[#647C73] dark:text-[#8CAAB8] shrink-0">
-              {veeHealth === 'waiting' ? <CloudOff size={20} strokeWidth={2.5} /> : <Info size={20} strokeWidth={2.5} />}
+              {displayHealth === 'waiting' ? <CloudOff size={20} strokeWidth={2.5} /> : <Info size={20} strokeWidth={2.5} />}
             </div>
             <div className="flex-1">
-              <p className="text-[#244135] dark:text-stone-200 text-sm font-bold mb-0.5">{veeHealth === 'waiting' ? 'Status Offline' : 'Saran Vee'}</p>
+              <p className="text-[#244135] dark:text-stone-200 text-sm font-bold mb-0.5">{!hasData ? 'Mulai dari sini' : displayHealth === 'waiting' ? 'Status Offline' : 'Saran Vee'}</p>
               <p className="text-[#647C73] dark:text-stone-400 text-xs font-medium leading-relaxed">{displaySuggestion}</p>
             </div>
           </>

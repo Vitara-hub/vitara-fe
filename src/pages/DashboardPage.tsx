@@ -79,17 +79,12 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
   const isLoading = isSyncing && !dashboardData;
   const hasActivityHistory =
     activityHistory.length > 0 || (activityData.data?.history.length ?? 0) > 0;
-  const isPristineDashboard = !hasActivityHistory && !errorMessage;
+  const hasDashboardData = hasActivityHistory && Boolean(dashboardData);
   const dashboardVeeHealth = errorMessage
     ? 'waiting'
-    : isPristineDashboard
-      ? 'fresh'
-      : deriveVeeHealthFromDashboard(dashboardData);
-  const displayHealthScore = isPristineDashboard ? 100 : dashboardData?.healthScore;
-  const displayStatusLabel = isPristineDashboard ? 'Prima' : dashboardData?.statusLabel;
-  const displaySuggestion = isPristineDashboard
-    ? 'Vee dalam kondisi prima! Yuk, mulai isi jurnal pertamamu.'
-    : dashboardData?.suggestion;
+    : hasDashboardData
+      ? deriveVeeHealthFromDashboard(dashboardData)
+      : 'waiting';
 
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-6 space-y-6">
@@ -110,14 +105,15 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
       <VeeStatusWidget 
         veeHealth={dashboardVeeHealth} 
         veeWeight={veeWeight} 
-        realScore={displayHealthScore}
+        realScore={dashboardData?.healthScore}
         isSyncing={isLoading}
-        statusLabel={displayStatusLabel}
-        suggestion={displaySuggestion}
+        statusLabel={dashboardData?.statusLabel}
+        suggestion={dashboardData?.suggestion}
+        hasData={hasDashboardData}
       />
 
       <PillarsGrid
-        breakdown={isPristineDashboard ? undefined : dashboardData?.breakdown}
+        breakdown={hasDashboardData ? dashboardData?.breakdown : undefined}
         isSyncing={isLoading}
         hasActivityHistory={hasActivityHistory}
       />

@@ -14,6 +14,7 @@ interface ActivityChartProps {
   chartData: ActivityChartPoint[];
   isLoading?: boolean;
   overrideState?: VeeOverrideState;
+  hasData?: boolean;
 }
 
 export default function ActivityChart({
@@ -24,6 +25,7 @@ export default function ActivityChart({
   chartData,
   isLoading = false,
   overrideState,
+  hasData = true,
 }: ActivityChartProps) {
   const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
   const weeklyChangeLabel = `${weeklyChangePercent >= 0 ? '+' : ''}${weeklyChangePercent}% dr minggu lalu`;
@@ -42,7 +44,13 @@ export default function ActivityChart({
           <div>
             <p className="text-xs font-bold text-[#8CAAB8] uppercase tracking-widest mb-1">Rata-rata Skor</p>
             <p className="text-4xl font-black text-[#2B4B3D] dark:text-stone-50">
-              {averageScore}<span className="text-base text-[#A0B0A8] font-bold">/100</span>
+              {hasData ? (
+                <>
+                  {averageScore}<span className="text-base text-[#A0B0A8] font-bold">/100</span>
+                </>
+              ) : (
+                <span className="text-2xl">Belum ada data</span>
+              )}
             </p>
           </div>
         )}
@@ -55,11 +63,13 @@ export default function ActivityChart({
             <Skeleton className="h-6 w-28 rounded-lg" />
           ) : (
             <div className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-sm ${
-              weeklyChangePercent >= 0
+              !hasData
+                ? 'bg-[#F4F6F5] dark:bg-stone-800 text-[#8CAAB8] dark:text-stone-400'
+                : weeklyChangePercent >= 0
                 ? 'bg-[#E8F0EA] dark:bg-[#1A2620] text-[#1DB38A] dark:text-[#8CE0A7]'
                 : 'bg-[#FFF0E6] dark:bg-[#2A1E18] text-[#D96B2B] dark:text-[#FF9F66]'
             }`}>
-              {weeklyChangeLabel}
+              {hasData ? weeklyChangeLabel : '-'}
             </div>
           )}
         </div>
@@ -67,7 +77,7 @@ export default function ActivityChart({
 
       <div className="flex justify-between items-end h-32 gap-2 mt-4 relative z-10 touch-pan-y">
         {chartData.map((item, index) => {
-          const barHeight = isLoading ? 64 : Math.max(16, Math.min(128, Math.round((item.score / 100) * 128)));
+          const barHeight = isLoading || !hasData ? 16 : Math.max(16, Math.min(128, Math.round((item.score / 100) * 128)));
           const isActive = activeBarIndex === index;
 
           return (
