@@ -41,16 +41,21 @@ const demoNotificationScenarios = [
   },
 ] as const;
 
-function mapProfileToAuthUser(profile: ProfileResponse, currentUser?: AuthUser | null): AuthUser {
+function mapProfileToAuthUser(
+  profile: ProfileResponse,
+  currentUser?: AuthUser | null,
+  fallbackUsername?: string,
+): AuthUser {
+  const username = profile.username?.trim() || fallbackUsername?.trim() || currentUser?.username || '';
   const displayName =
     profile.fullName?.trim() ||
-    profile.username?.trim() ||
+    username ||
     profile.email?.trim() ||
     'User';
 
   return {
     uid: profile.id,
-    username: profile.username || '',
+    username,
     email: profile.email || '',
     displayName,
     imageUrl: profile.imageUrl ?? null,
@@ -201,7 +206,7 @@ export default function ProfilePage() {
         username: profileForm.username.trim(),
         fullName: profileForm.fullName.trim(),
       });
-      const updatedUser = mapProfileToAuthUser(updatedProfile, user);
+      const updatedUser = mapProfileToAuthUser(updatedProfile, user, profileForm.username);
       setAuthUser(updatedUser);
 
       const nextValues = getProfileFormValues(updatedUser);

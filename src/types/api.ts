@@ -232,6 +232,8 @@ export interface UserMetadata {
   picture?: string | null;
   full_name?: string | null;
   name?: string | null;
+  username?: string | null;
+  preferred_username?: string | null;
 }
 
 export interface JournalLogItem {

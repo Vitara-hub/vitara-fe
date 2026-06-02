@@ -14,6 +14,15 @@ export default function ProfileHeader({ user, isLoading = false }: ProfileHeader
   const displayName = user?.displayName?.trim() || user?.name?.trim() || user?.username?.trim() || 'User';
   const avatarSrc = useMemo(() => getAvatarSrc(user), [user]);
   const avatarAlt = useMemo(() => getAvatarAlt(user), [user]);
+  const usernameHandle = useMemo(() => {
+    const username =
+      user?.username?.trim() ||
+      user?.user_metadata?.username?.trim() ||
+      user?.user_metadata?.preferred_username?.trim() ||
+      'user';
+
+    return `@${username.replace(/^@+/, '')}`;
+  }, [user]);
 
   return (
     <div className="bg-white dark:bg-[#1A1D1B] p-8 flex flex-col items-center border-b border-[#E8F0EA] dark:border-stone-800 min-h-[238px]">
@@ -42,6 +51,9 @@ export default function ProfileHeader({ user, isLoading = false }: ProfileHeader
           <h1 className="mt-4 text-xl font-bold text-[#2B4B3D] dark:text-stone-50">
             {displayName}
           </h1>
+          <p className="text-sm font-semibold text-[#647C73] dark:text-stone-400 text-center mt-1">
+            {usernameHandle}
+          </p>
           <p className="text-xs font-semibold text-[#8CAAB8] uppercase tracking-wider text-center mt-1">
             {user?.email || ''}
           </p>
