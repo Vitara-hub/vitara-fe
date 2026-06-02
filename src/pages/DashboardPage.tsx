@@ -23,6 +23,7 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
     user,
     veeWeight,
     dashboardHealthScore,
+    activityData,
     setDashboardHealthScore,
   } = useStore();
 
@@ -78,6 +79,7 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
   const dashboardVeeHealth = errorMessage
     ? 'waiting'
     : deriveVeeHealthFromDashboard(dashboardData);
+  const hasActivityHistory = (activityData.data?.history.length ?? 0) > 0;
 
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-6 space-y-6">
@@ -104,7 +106,11 @@ export default function DashboardPage({ isDarkMode, toggleDarkMode }: DashboardP
         suggestion={dashboardData?.suggestion}
       />
 
-      <PillarsGrid breakdown={dashboardData?.breakdown} isSyncing={isLoading} />
+      <PillarsGrid
+        breakdown={dashboardData?.breakdown}
+        isSyncing={isLoading}
+        hasActivityHistory={hasActivityHistory}
+      />
 
       <div className="h-32 shrink-0 w-full"></div>
     </div>

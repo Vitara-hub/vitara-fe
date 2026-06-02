@@ -4,6 +4,7 @@ import useStore from '@/store/useStore';
 import { useAutoSync } from '@/hooks/useAutoSync';
 import useKeyboardVisible from '@/hooks/useKeyboardVisible';
 import useHardwareEcoMode from '@/hooks/useHardwareEcoMode';
+import { hasAuthTokens } from '@/services/authSession';
 
 import BottomNav from '@/components/layout/BottomNav';
 import Sidebar from '@/components/layout/Sidebar';
@@ -72,10 +73,11 @@ function getViewFromPath(pathname: string): ViewType | null {
 }
 
 export default function App() {
-  const { isAuthenticated, isAuthLoading, isDarkMode, toggleDarkMode, veeHealth, initAuth } = useStore();
+  const { isAuthenticated, isAuthLoading, user, isDarkMode, toggleDarkMode, veeHealth, initAuth } = useStore();
   const [currentView, setCurrentView] = useState<ViewType>(() => getViewFromPath(window.location.pathname) || 'landing');
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const isKeyboardVisible = useKeyboardVisible();
+  const hasValidSession = isAuthenticated && Boolean(user) && hasAuthTokens();
   
   const isEcoMode = useHardwareEcoMode();
   useAutoSync();
@@ -119,7 +121,7 @@ export default function App() {
                   ('standalone' in window.navigator && (window.navigator as NavigatorWithStandalone).standalone === true);
     const pathView = getViewFromPath(window.location.pathname);
 
-    if (isAuthenticated) {
+    if (hasValidSession) {
       const nextView = !pathView || pathView === 'landing' || pathView === 'login' ? 'dashboard' : pathView;
       defer(() => navigateToView(nextView, true));
       return;
@@ -131,7 +133,7 @@ export default function App() {
     }
 
     defer(() => navigateToView(pathView || (isPWA ? 'login' : 'landing'), true));
-  }, [isAuthenticated, isAuthLoading, navigateToView]);
+  }, [hasValidSession, isAuthLoading, navigateToView]);
 
   useEffect(() => {
     if (isDarkMode) document.documentElement.classList.add('dark');
@@ -143,6 +145,10 @@ export default function App() {
   };
 
   const renderView = (): ReactNode => {
+    if (!hasValidSession && protectedViews.has(currentView)) {
+      return <LoginPage onLogin={handleLoginSuccess} />;
+    }
+
     switch (currentView) {
       case 'landing': return <LandingPage onEnter={() => navigateToView('login')} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />;
       case 'login': return <LoginPage onLogin={handleLoginSuccess} />;
@@ -171,7 +177,7 @@ export default function App() {
       <div className={`h-[100dvh] w-full flex flex-col overflow-hidden`}>
         <div className="flex-1 flex w-full min-h-0 bg-[#FAF9F6] dark:bg-[#121413] transition-colors duration-300 font-sans text-[#2B4B3D] dark:text-stone-100 overflow-hidden">
           
-          {isAuthenticated && currentView !== 'landing' && currentView !== 'login' && (
+          {hasValidSession && currentView !== 'landing' && currentView !== 'login' && (
             <Sidebar currentView={currentView} setCurrentView={navigateToView} />
           )}
 
@@ -184,7 +190,7 @@ export default function App() {
               </div>
             </main>
 
-            {isAuthenticated && currentView !== 'landing' && currentView !== 'login' && !isKeyboardVisible && (
+            {hasValidSession && currentView !== 'landing' && currentView !== 'login' && !isKeyboardVisible && (
               <div className="md:hidden animate-in fade-in slide-in-from-bottom-4 duration-300 z-50">
                 <BottomNav currentView={currentView} setCurrentView={navigateToView} />
               </div>

@@ -23,9 +23,10 @@ export default function DashboardHeader({
     day: 'numeric',
     month: 'short',
   });
+  const displayName = user?.displayName?.trim() || user?.name?.trim() || 'User';
   const avatarSeed = encodeURIComponent(user?.username || user?.email || user?.uid || 'vitara-user');
   const avatarSrc = user?.imageUrl?.trim() || `https://api.dicebear.com/7.x/notionists/svg?seed=${avatarSeed}`;
-  const avatarAlt = `${user?.username || user?.displayName || 'Vitara user'}'s avatar`;
+  const avatarAlt = `${user?.username || displayName}'s avatar`;
 
   const hour = new Date().getHours();
   const greeting = hour >= 5 && hour < 12
@@ -59,7 +60,7 @@ export default function DashboardHeader({
             <div className="min-w-0">
               <p className="text-[#647C73] dark:text-stone-400 text-xs font-medium mb-0.5">{currentDate}</p>
               <h2 className="text-lg font-extrabold text-[#244135] dark:text-stone-50 leading-none truncate">
-                {greeting}, {user?.displayName || user?.name || 'Sarah'}
+                {greeting}, {displayName}
               </h2>
             </div>
           </>

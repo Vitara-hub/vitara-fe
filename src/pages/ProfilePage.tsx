@@ -39,7 +39,10 @@ export default function ProfilePage() {
   };
 
   const handleLogout = () => {
-    void logout();
+    void logout().finally(() => {
+      window.history.replaceState({}, '', '/login');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
   };
 
   const submitDataDeletionRequest = async () => {
