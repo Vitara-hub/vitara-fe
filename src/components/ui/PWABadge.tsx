@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { RefreshCw, X } from 'lucide-react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function PWABadge() {
+  const [isApplyingUpdate, setIsApplyingUpdate] = useState<boolean>(false);
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
@@ -13,6 +15,22 @@ export default function PWABadge() {
       console.error('Service worker registration failed:', error);
     },
   });
+
+  const handleApplyUpdate = async () => {
+    if (isApplyingUpdate) return;
+
+    setIsApplyingUpdate(true);
+
+    try {
+      await updateServiceWorker(true);
+    } catch (error) {
+      console.error('Failed to apply service worker update.', error);
+    } finally {
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 250);
+    }
+  };
 
   if (!needRefresh) return null;
 
@@ -26,11 +44,12 @@ export default function PWABadge() {
 
       <button
         type="button"
-        onClick={() => { void updateServiceWorker(true); }}
-        className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-[#8CE0A7] px-3 text-sm font-semibold text-[#173326] transition hover:bg-[#7BD396] focus:outline-none focus:ring-2 focus:ring-[#8CE0A7] focus:ring-offset-2 focus:ring-offset-[#FAF9F6] dark:focus:ring-offset-[#18211C]"
+        onClick={() => { void handleApplyUpdate(); }}
+        disabled={isApplyingUpdate}
+        className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-[#8CE0A7] px-3 text-sm font-semibold text-[#173326] transition hover:bg-[#7BD396] focus:outline-none focus:ring-2 focus:ring-[#8CE0A7] focus:ring-offset-2 focus:ring-offset-[#FAF9F6] disabled:cursor-wait disabled:opacity-70 dark:focus:ring-offset-[#18211C]"
       >
-        <RefreshCw className="h-4 w-4" aria-hidden="true" />
-        Refresh
+        <RefreshCw className={`h-4 w-4 ${isApplyingUpdate ? 'animate-spin' : ''}`} aria-hidden="true" />
+        {isApplyingUpdate ? 'Updating' : 'Refresh'}
       </button>
 
       <button
