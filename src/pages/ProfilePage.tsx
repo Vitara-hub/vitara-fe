@@ -44,18 +44,14 @@ const demoNotificationScenarios = [
 function mapProfileToAuthUser(
   profile: ProfileResponse,
   currentUser?: AuthUser | null,
-  fallbackUsername?: string,
 ): AuthUser {
-  const username = profile.username?.trim() || fallbackUsername?.trim() || currentUser?.username || '';
   const displayName =
     profile.fullName?.trim() ||
-    username ||
     profile.email?.trim() ||
     'User';
 
   return {
     uid: profile.id,
-    username,
     email: profile.email || '',
     displayName,
     imageUrl: profile.imageUrl ?? null,
@@ -67,7 +63,6 @@ function mapProfileToAuthUser(
 function getProfileFormValues(user: AuthUser | null) {
   return {
     fullName: user?.displayName || user?.name || '',
-    username: user?.username || '',
     email: user?.email || '',
   };
 }
@@ -87,9 +82,7 @@ export default function ProfilePage() {
   const [profileForm, setProfileForm] = useState(() => getProfileFormValues(user));
   const [profileBaseline, setProfileBaseline] = useState(() => getProfileFormValues(user));
   const isLoading = false;
-  const hasProfileChanges =
-    profileForm.fullName.trim() !== profileBaseline.fullName.trim() ||
-    profileForm.username.trim() !== profileBaseline.username.trim();
+  const hasProfileChanges = profileForm.fullName.trim() !== profileBaseline.fullName.trim();
 
   useEffect(() => () => {
     if (notificationTimeoutRef.current !== null) {
@@ -203,10 +196,9 @@ export default function ProfilePage() {
 
     try {
       const updatedProfile = await vitaraApi.updateProfile({
-        username: profileForm.username.trim(),
         fullName: profileForm.fullName.trim(),
       });
-      const updatedUser = mapProfileToAuthUser(updatedProfile, user, profileForm.username);
+      const updatedUser = mapProfileToAuthUser(updatedProfile, user);
       setAuthUser(updatedUser);
 
       const nextValues = getProfileFormValues(updatedUser);
@@ -308,17 +300,6 @@ export default function ProfilePage() {
                   type="text"
                   value={profileForm.fullName}
                   onChange={(event) => setProfileForm((current) => ({ ...current, fullName: event.target.value }))}
-                  disabled={isSavingProfile}
-                  className="w-full rounded-[18px] border border-[#E8F0EA] dark:border-stone-700 bg-[#F4F6F5] dark:bg-[#121413] px-4 py-3 text-sm font-bold text-[#2B4B3D] dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-[#8CE0A7] disabled:opacity-60"
-                />
-              </label>
-
-              <label className="block">
-                <span className="block text-[11px] font-black uppercase tracking-wider text-[#647C73] dark:text-stone-400 mb-2">Username</span>
-                <input
-                  type="text"
-                  value={profileForm.username}
-                  onChange={(event) => setProfileForm((current) => ({ ...current, username: event.target.value }))}
                   disabled={isSavingProfile}
                   className="w-full rounded-[18px] border border-[#E8F0EA] dark:border-stone-700 bg-[#F4F6F5] dark:bg-[#121413] px-4 py-3 text-sm font-bold text-[#2B4B3D] dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-[#8CE0A7] disabled:opacity-60"
                 />

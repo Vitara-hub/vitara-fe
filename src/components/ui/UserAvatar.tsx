@@ -28,14 +28,12 @@ export default function UserAvatar({
   const metadataName = cleanText(user?.user_metadata?.name);
   const displayName = cleanText(user?.displayName);
   const name = cleanText(user?.name);
-  const username = cleanText(user?.username);
   const email = cleanText(user?.email);
   const imageUrl = cleanText(user?.imageUrl);
   const uid = cleanText(user?.uid);
   const hasUserIdentity = Boolean(
     uid ||
       email ||
-      username ||
       displayName ||
       name ||
       imageUrl ||
@@ -44,8 +42,8 @@ export default function UserAvatar({
   );
 
   const avatarSeed = useMemo(
-    () => metadataFullName || metadataName || displayName || name || username || email || 'vitara-user',
-    [metadataFullName, metadataName, displayName, name, username, email],
+    () => metadataFullName || metadataName || displayName || name || email || 'vitara-user',
+    [metadataFullName, metadataName, displayName, name, email],
   );
   const fallbackAvatarSrc = useMemo(
     () => `${DICEBEAR_AVATAR_BASE}?seed=${encodeURIComponent(avatarSeed)}`,
@@ -56,10 +54,10 @@ export default function UserAvatar({
     [metadataAvatarUrl, metadataPicture, imageUrl, fallbackAvatarSrc],
   );
   const avatarAlt = useMemo(
-    () => `${username || avatarSeed}'s avatar`,
-    [username, avatarSeed],
+    () => `${displayName || name || email || avatarSeed}'s avatar`,
+    [displayName, name, email, avatarSeed],
   );
-  const avatarKey = uid || email || username || avatarSeed || 'guest';
+  const avatarKey = uid || email || avatarSeed || 'guest';
 
   if (!hasUserIdentity) {
     return (

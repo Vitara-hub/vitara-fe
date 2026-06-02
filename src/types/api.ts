@@ -232,8 +232,6 @@ export interface UserMetadata {
   picture?: string | null;
   full_name?: string | null;
   name?: string | null;
-  username?: string | null;
-  preferred_username?: string | null;
 }
 
 export interface JournalLogItem {
@@ -251,7 +249,6 @@ export interface PaginatedResponse<T> {
 }
 
 export interface ProfileUpdateRequest {
-  username?: string;
   fullName?: string;
   timezone?: string;
 }

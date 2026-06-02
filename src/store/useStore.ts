@@ -49,7 +49,6 @@ export interface CacheEntry<T> {
 
 export interface AuthUser {
   uid: string;
-  username: string;
   email: string;
   displayName: string;
   imageUrl: string | null;
@@ -60,13 +59,11 @@ export interface AuthUser {
 function mapProfileUser(profile: AuthMeResponse): AuthUser {
   const displayName =
     profile.fullName?.trim() ||
-    profile.username?.trim() ||
     profile.email?.trim() ||
     'Vitara User';
 
   return {
     uid: profile.id,
-    username: profile.username || '',
     email: profile.email || '',
     displayName,
     imageUrl: profile.imageUrl,

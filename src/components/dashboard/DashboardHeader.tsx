@@ -24,12 +24,6 @@ export default function DashboardHeader({
     month: 'short',
   });
   const displayName = user?.displayName?.trim() || user?.name?.trim() || 'User';
-  const username =
-    user?.username?.trim() ||
-    user?.user_metadata?.username?.trim() ||
-    user?.user_metadata?.preferred_username?.trim() ||
-    'user';
-  const usernameHandle = `@${username.replace(/^@+/, '')}`;
 
   const hour = new Date().getHours();
   const greeting = hour >= 5 && hour < 12
@@ -65,9 +59,6 @@ export default function DashboardHeader({
               <h2 className="text-lg font-extrabold text-[#244135] dark:text-stone-50 leading-none truncate">
                 {greeting}, {displayName}
               </h2>
-              <p className="mt-1 text-xs font-semibold text-[#8CAAB8] dark:text-stone-500 truncate">
-                {usernameHandle}
-              </p>
             </div>
           </>
         )}
