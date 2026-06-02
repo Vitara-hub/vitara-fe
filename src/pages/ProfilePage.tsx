@@ -78,6 +78,7 @@ export default function ProfilePage() {
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState<boolean>(() => (
     typeof Notification !== 'undefined' && Notification.permission === 'granted'
   ));
+  const [isResearchEnabled, setIsResearchEnabled] = useState<boolean>(false);
   const [profileForm, setProfileForm] = useState(() => getProfileFormValues(user));
   const [profileBaseline, setProfileBaseline] = useState(() => getProfileFormValues(user));
   const isLoading = false;
@@ -374,15 +375,32 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-3">
-              <div className="w-full flex items-center justify-between gap-4 p-4 rounded-[20px] bg-[#F4F6F5] dark:bg-[#121413] border border-[#E8F0EA] dark:border-stone-800">
-                <div className="min-w-0">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isResearchEnabled}
+                onClick={() => setIsResearchEnabled((current) => !current)}
+                className="w-full flex items-center justify-between gap-4 p-4 rounded-[20px] bg-[#F4F6F5] dark:bg-[#121413] border border-[#E8F0EA] dark:border-stone-800 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7]"
+              >
+                <div className="min-w-0 flex-1">
                   <span className="block font-bold text-[#2B4B3D] dark:text-stone-100 text-sm">Bagikan data anonim untuk riset</span>
-                  <span className="block text-xs font-semibold text-[#8CAAB8] dark:text-stone-500 mt-0.5">OFF</span>
+                  <span className="block text-xs font-semibold text-[#8CAAB8] dark:text-stone-500 mt-0.5">
+                    {isResearchEnabled ? 'ON' : 'OFF'}
+                  </span>
                 </div>
-                <span aria-hidden="true" className="relative h-7 w-12 shrink-0 rounded-full bg-[#E8F0EA] dark:bg-stone-700">
-                  <span className="absolute top-1 h-5 w-5 translate-x-1 rounded-full bg-white shadow-sm" />
+                <span
+                  aria-hidden="true"
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                    isResearchEnabled ? 'bg-[#1DB38A]' : 'bg-[#E8F0EA] dark:bg-stone-700'
+                  }`}
+                >
+                  <span
+                    className={`absolute left-[2px] top-[2px] h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                      isResearchEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
                 </span>
-              </div>
+              </button>
 
               <button
                 type="button"
@@ -462,13 +480,13 @@ export default function ProfilePage() {
                 </div>
                 <span
                   aria-hidden="true"
-                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
                     isNotificationsEnabled ? 'bg-[#1DB38A]' : 'bg-[#E8F0EA] dark:bg-stone-700'
                   }`}
                 >
                   <span
-                    className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-                      isNotificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+                    className={`absolute left-[2px] top-[2px] h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                      isNotificationsEnabled ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </span>
