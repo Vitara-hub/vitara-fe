@@ -103,6 +103,6 @@ export function mapActivityFeed(
     average_score: summary.averageHealthScore,
     weekly_change_percent: computeWeeklyChange(chart.map((point) => point.score)),
     chart,
-    history: recent.slice(0, 6).map(mapRecentItem),
+    history: recent.map(mapRecentItem),
   };
 }

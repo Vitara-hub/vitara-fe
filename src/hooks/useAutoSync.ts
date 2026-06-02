@@ -3,6 +3,8 @@ import useStore, { ActivityLog } from '@/store/useStore';
 import { vitaraApi } from '@/services/api';
 import type { SleepAnalyzeRequest, TypingRequest } from '@/types/api';
 
+class SkipPendingLogError extends Error {}
+
 function getPayloadString(log: ActivityLog, key: string): string | null {
   const value = log.pendingPayload?.[key];
   return typeof value === 'string' && value.trim() ? value : null;
@@ -86,6 +88,10 @@ async function syncPendingLog(log: ActivityLog): Promise<Partial<ActivityLog>> {
     const imageFile = log.pendingPayload?.imageFile;
     if (imageFile instanceof File) {
       const response = await vitaraApi.predictFood(imageFile);
+      if (response.estimatedCalories <= 0 || response.foods.length === 0) {
+        throw new SkipPendingLogError('Makanan dengan 0 kalori tidak dicatat ke aktivitas.');
+      }
+
       useStore.getState().updateMetric('food', {
         estimatedCalories: response.estimatedCalories,
       });
@@ -102,6 +108,10 @@ async function syncPendingLog(log: ActivityLog): Promise<Partial<ActivityLog>> {
 
     if (!name || typeof calories !== 'number') {
       throw new Error('Missing food payload for background sync.');
+    }
+
+    if (calories <= 0) {
+      throw new SkipPendingLogError('Makanan dengan 0 kalori tidak dicatat ke aktivitas.');
     }
 
     await vitaraApi.createManualFoodLog({
@@ -175,6 +185,13 @@ export const useAutoSync = () => {
 
             syncedCount += 1;
           } catch (error) {
+            if (error instanceof SkipPendingLogError) {
+              useStore.setState((state) => ({
+                activityHistory: state.activityHistory.filter((item) => item.id !== log.id),
+              }));
+              continue;
+            }
+
             console.error(`Gagal sinkronisasi log ${log.id}, server mati!`, error);
             useStore.getState().setServerDown(true);
             useStore.getState().setVeeState('waiting');

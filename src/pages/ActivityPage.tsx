@@ -130,7 +130,7 @@ function buildLocalActivityData(activityHistory: ActivityLog[]): ActivityDataRes
     ? previousWeekScores.reduce((sum, score) => sum + score, 0) / previousWeekScores.length
     : averageScore;
 
-  const history: ActivityHistoryItem[] = activityHistory.slice(0, 6).map((log) => ({
+  const history: ActivityHistoryItem[] = activityHistory.map((log) => ({
     id: log.id,
     type: log.type,
     title: getHistoryTitle(log),

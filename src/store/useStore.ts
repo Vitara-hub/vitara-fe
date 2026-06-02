@@ -300,6 +300,10 @@ const useStore = create<StoreState>()(
       
       activityHistory: [],
       addLog: (log) => set((state) => {
+        if (log.type === 'food' && typeof log.calories === 'number' && log.calories <= 0) {
+          return state;
+        }
+
         const newLog = { 
           id: Date.now(), 
           timestamp: new Date().toISOString(), 

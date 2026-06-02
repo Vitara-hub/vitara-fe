@@ -75,9 +75,9 @@ interface RecentHistoryProps {
 }
 
 export default function RecentHistory({ items, isLoading = false }: RecentHistoryProps) {
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
-  const canExpand = items.length > 5;
-  const displayedItems = isExpanded ? items : items.slice(0, 5);
+  const [showAll, setShowAll] = useState<boolean>(false);
+  const canExpand = items.length > 6;
+  const displayedItems = showAll ? items : items.slice(0, 6);
 
   return (
     <div>
@@ -88,10 +88,10 @@ export default function RecentHistory({ items, isLoading = false }: RecentHistor
          ) : canExpand ? (
            <button
              type="button"
-             onClick={() => setIsExpanded((current) => !current)}
+             onClick={() => setShowAll((current) => !current)}
              className="text-[10px] font-bold text-[#8CAAB8] dark:text-stone-500 cursor-pointer hover:text-[#8CE0A7] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7] rounded-md"
            >
-             {isExpanded ? 'Sembunyikan' : 'Lihat Semua'}
+             {showAll ? 'Lebih Sedikit' : 'Lihat Semua'}
            </button>
          ) : null}
       </div>

@@ -107,6 +107,21 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
 
   const handleSaveNutrition = () => {
     if (!result) return;
+
+    if (result.calories <= 0) {
+      setFile(null);
+      setResult(null);
+      setSaved(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setPopup({
+        isOpen: true,
+        type: 'info',
+        title: 'Tidak Dicatat',
+        message: 'Makanan dengan 0 kalori tidak dicatat ke aktivitas.',
+      });
+      return;
+    }
+
     setWeight(prev => Math.min(prev + 0.15, 1.6)); 
     setVeeHealth('fresh'); 
     setSaved(true);
