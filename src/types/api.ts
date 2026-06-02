@@ -38,6 +38,7 @@ export interface AuthMeResponse {
   fullName: string | null;
   timezone: string;
   imageUrl: string | null;
+  user_metadata?: UserMetadata | null;
 }
 
 export type GoogleAuthCallbackRequest =
@@ -223,6 +224,14 @@ export interface ProfileResponse {
   fullName: string | null;
   timezone: string;
   imageUrl?: string | null;
+  user_metadata?: UserMetadata | null;
+}
+
+export interface UserMetadata {
+  avatar_url?: string | null;
+  picture?: string | null;
+  full_name?: string | null;
+  name?: string | null;
 }
 
 export interface JournalLogItem {

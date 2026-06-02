@@ -11,7 +11,7 @@ import {
 } from '@/services/authSession';
 import { isApiConfigured, resetChatSession, vitaraApi } from '@/services/api';
 import { mapActivityFeed } from '@/utils/activityMapper';
-import type { AuthMeResponse, AuthTokensResponse } from '@/types/api';
+import type { AuthMeResponse, AuthTokensResponse, UserMetadata } from '@/types/api';
 import type { ActivityDataResponse, ChatHistoryMessage, DashboardTodayResponse } from '@/types/api';
 
 export interface BaseActivityLog { 
@@ -54,6 +54,7 @@ export interface AuthUser {
   displayName: string;
   imageUrl: string | null;
   name: string;
+  user_metadata?: UserMetadata | null;
 }
 
 function mapProfileUser(profile: AuthMeResponse): AuthUser {
@@ -70,6 +71,7 @@ function mapProfileUser(profile: AuthMeResponse): AuthUser {
     displayName,
     imageUrl: profile.imageUrl,
     name: displayName,
+    user_metadata: profile.user_metadata ?? null,
   };
 }
 

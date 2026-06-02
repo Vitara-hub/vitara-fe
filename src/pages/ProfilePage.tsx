@@ -1,11 +1,12 @@
 // src/pages/ProfilePage.tsx
 import { FormEvent, useState } from 'react';
-import useStore, { AuthUser } from '@/store/useStore';
+import useStore from '@/store/useStore';
 import { vitaraApi } from '@/services/api';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import { LogOut, Trash2, ChevronRight, Settings, Bell, Shield, X } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
 import PopupAlert, { PopupState } from '@/components/ui/PopupAlert';
+import type { AuthUser } from '@/store/useStore';
 import type { ProfileResponse } from '@/types/api';
 
 type ProfileAlertState = PopupState & {
@@ -21,7 +22,7 @@ const closedAlert: ProfileAlertState = {
   type: 'info',
 };
 
-function mapProfileToAuthUser(profile: ProfileResponse): AuthUser {
+function mapProfileToAuthUser(profile: ProfileResponse, currentUser?: AuthUser | null): AuthUser {
   const displayName =
     profile.fullName?.trim() ||
     profile.username?.trim() ||
@@ -35,6 +36,7 @@ function mapProfileToAuthUser(profile: ProfileResponse): AuthUser {
     displayName,
     imageUrl: profile.imageUrl ?? null,
     name: displayName,
+    user_metadata: profile.user_metadata ?? currentUser?.user_metadata ?? null,
   };
 }
 
@@ -104,7 +106,7 @@ export default function ProfilePage() {
         fullName: profileForm.fullName.trim(),
         timezone: profileForm.timezone.trim() || 'Asia/Jakarta',
       });
-      const updatedUser = mapProfileToAuthUser(updatedProfile);
+      const updatedUser = mapProfileToAuthUser(updatedProfile, user);
       setAuthUser(updatedUser);
 
       const nextValues = {

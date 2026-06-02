@@ -2,6 +2,7 @@
 import { Sun, Moon } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
 import type { AuthUser } from '@/store/useStore';
+import { createAvatarFallbackHandler, getAvatarAlt, getAvatarSrc } from '@/utils/avatar';
 
 interface DashboardHeaderProps {
   user: AuthUser | null;
@@ -24,9 +25,8 @@ export default function DashboardHeader({
     month: 'short',
   });
   const displayName = user?.displayName?.trim() || user?.name?.trim() || 'User';
-  const avatarSeed = encodeURIComponent(user?.username || user?.email || user?.uid || 'vitara-user');
-  const avatarSrc = user?.imageUrl?.trim() || `https://api.dicebear.com/7.x/notionists/svg?seed=${avatarSeed}`;
-  const avatarAlt = `${user?.username || displayName}'s avatar`;
+  const avatarSrc = getAvatarSrc(user);
+  const avatarAlt = getAvatarAlt(user);
 
   const hour = new Date().getHours();
   const greeting = hour >= 5 && hour < 12
@@ -54,6 +54,7 @@ export default function DashboardHeader({
               <img
                 src={avatarSrc}
                 alt={avatarAlt}
+                onError={createAvatarFallbackHandler(user)}
                 className="group-hover:rotate-6 transition-transform"
               />
             </div>
