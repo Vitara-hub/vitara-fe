@@ -35,6 +35,58 @@ const activityStyles: Record<ActivityType, { icon: ReactNode; color: string }> =
   },
 };
 
+const GENERIC_TITLES = new Set([
+  'nutrition lens',
+  'journal entry',
+  'unknown',
+]);
+
+function normalizeText(value: string | number) {
+  return String(value).trim().toLowerCase();
+}
+
+function getNumericScore(value: string | number) {
+  if (typeof value === 'number') return value;
+
+  const match = value.match(/-?\d+(\.\d+)?/);
+  return match ? Number(match[0]) : null;
+}
+
+function isZeroCalorieFood(item: ActivityHistoryItem) {
+  if (item.type !== 'food') return false;
+
+  const score = getNumericScore(item.score);
+  return score !== null && score <= 0;
+}
+
+function isUnknownItem(item: ActivityHistoryItem) {
+  return normalizeText(item.title) === 'unknown' || normalizeText(item.score) === 'unknown';
+}
+
+function isGenericItem(item: ActivityHistoryItem) {
+  return GENERIC_TITLES.has(normalizeText(item.title));
+}
+
+function cleanActivityItems(items: ActivityHistoryItem[]) {
+  const structurallyValidItems = items.filter(
+    (item) => !isZeroCalorieFood(item) && !isUnknownItem(item),
+  );
+
+  return structurallyValidItems.filter((item, _index, allItems) => {
+    if (!isGenericItem(item)) return true;
+
+    const hasMeaningfulSibling = allItems.some(
+      (candidate) =>
+        candidate.id !== item.id &&
+        candidate.type === item.type &&
+        candidate.time === item.time &&
+        !isGenericItem(candidate),
+    );
+
+    return !hasMeaningfulSibling;
+  });
+}
+
 function LogCard({ icon, color, title, time, score }: LogCardProps) {
   return (
     <div className="bg-white dark:bg-[#1A1D1B] p-4 rounded-[20px] shadow-sm flex items-center justify-between border border-[#E8F0EA] dark:border-stone-800">
@@ -76,8 +128,9 @@ interface RecentHistoryProps {
 
 export default function RecentHistory({ items, isLoading = false }: RecentHistoryProps) {
   const [showAll, setShowAll] = useState<boolean>(false);
-  const canExpand = items.length > 6;
-  const displayedItems = showAll ? items : items.slice(0, 6);
+  const cleanItems = cleanActivityItems(items);
+  const canExpand = cleanItems.length > 6;
+  const displayedItems = showAll ? cleanItems : cleanItems.slice(0, 6);
 
   return (
     <div>
@@ -98,7 +151,7 @@ export default function RecentHistory({ items, isLoading = false }: RecentHistor
       <div className="space-y-3">
         {isLoading ? (
           [0, 1, 2, 3].map((item) => <LogCardSkeleton key={item} />)
-        ) : items.length > 0 ? (
+        ) : cleanItems.length > 0 ? (
           displayedItems.map((item) => {
             const style = activityStyles[item.type] ?? activityStyles.journal;
 
