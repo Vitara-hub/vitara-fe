@@ -33,6 +33,16 @@ export default function JournalTab({ jumpDirection, veeHealth, setVeeHealth, wei
     typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 1000);
   };
 
+  const blockPaste = (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+    setPopup({
+      isOpen: true,
+      type: 'info',
+      title: 'Paste Dinonaktifkan',
+      message: 'Fitur paste dinonaktifkan untuk keperluan analisis gaya mengetik.',
+    });
+  };
+
   const handleSave = async () => {
     if (text.length < 10) return setPopup({ isOpen: true, type: 'error', title: 'Teks Terlalu Pendek', message: 'Ceritanya kurang panjang nih.' });
     
@@ -105,7 +115,7 @@ export default function JournalTab({ jumpDirection, veeHealth, setVeeHealth, wei
         <div className="mt-4"><VeeMascot jumpDirection={jumpDirection} isTyping={isTyping} veeHealth={displayHealth} scale={1.15} weight={weight} eyeLookX={eyeLookX} eyeLookY={eyeLookY} /></div>
       </div>
       <div className="bg-white dark:bg-[#1A1D1B] p-6 rounded-[28px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-transparent dark:border-stone-800/50">
-        <textarea value={text} onChange={handleTextChange} onKeyDown={handleKeyDown} disabled={isAnalyzing} placeholder="Apa yang ngeganjel di pikiranmu hari ini?" className="w-full min-h-[160px] p-5 rounded-[20px] bg-[#F4F6F5] dark:bg-[#121413] focus:outline-none focus:ring-2 focus:ring-[#8CE0A7] transition-all resize-none text-[#244135] dark:text-stone-100 font-medium placeholder-[#A0B0A8] text-sm disabled:opacity-50"></textarea>
+        <textarea value={text} onChange={handleTextChange} onKeyDown={handleKeyDown} onPaste={blockPaste} onContextMenu={blockPaste} disabled={isAnalyzing} placeholder="Apa yang ngeganjel di pikiranmu hari ini?" className="w-full min-h-[160px] p-5 rounded-[20px] bg-[#F4F6F5] dark:bg-[#121413] focus:outline-none focus:ring-2 focus:ring-[#8CE0A7] transition-all resize-none text-[#244135] dark:text-stone-100 font-medium placeholder-[#A0B0A8] text-sm disabled:opacity-50"></textarea>
       </div>
       <button onClick={() => { void handleSave(); }} disabled={isAnalyzing} className="w-full py-4 rounded-[22px] bg-[#244135] dark:bg-[#8CE0A7] text-white dark:text-[#121413] font-black text-sm shadow-[0_8px_24px_rgba(36,65,53,0.15)] flex justify-center items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50">
         {isAnalyzing ? <><Activity size={18} className="animate-pulse" /> Memproses...</> : 'Lepaskan Beban'}
