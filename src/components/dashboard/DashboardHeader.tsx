@@ -1,9 +1,7 @@
-// src/components/dashboard/DashboardHeader.tsx
-import { useMemo } from 'react';
 import { Sun, Moon } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
+import UserAvatar from '@/components/ui/UserAvatar';
 import type { AuthUser } from '@/store/useStore';
-import { createAvatarFallbackHandler, getAvatarAlt, getAvatarSrc } from '@/utils/avatar';
 
 interface DashboardHeaderProps {
   user: AuthUser | null;
@@ -26,17 +24,12 @@ export default function DashboardHeader({
     month: 'short',
   });
   const displayName = user?.displayName?.trim() || user?.name?.trim() || 'User';
-  const avatarSrc = useMemo(() => getAvatarSrc(user), [user]);
-  const avatarAlt = useMemo(() => getAvatarAlt(user), [user]);
-  const usernameHandle = useMemo(() => {
-    const username =
-      user?.username?.trim() ||
-      user?.user_metadata?.username?.trim() ||
-      user?.user_metadata?.preferred_username?.trim() ||
-      'user';
-
-    return `@${username.replace(/^@+/, '')}`;
-  }, [user]);
+  const username =
+    user?.username?.trim() ||
+    user?.user_metadata?.username?.trim() ||
+    user?.user_metadata?.preferred_username?.trim() ||
+    'user';
+  const usernameHandle = `@${username.replace(/^@+/, '')}`;
 
   const hour = new Date().getHours();
   const greeting = hour >= 5 && hour < 12
@@ -60,14 +53,13 @@ export default function DashboardHeader({
           </>
         ) : (
           <>
-            <div className="w-12 h-12 rounded-full bg-white dark:bg-stone-800 overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.03)] shrink-0 group hover:scale-105 transition-transform cursor-pointer">
-              <img
-                src={avatarSrc}
-                alt={avatarAlt}
-                onError={createAvatarFallbackHandler(user)}
-                className="w-12 h-12 rounded-full object-cover group-hover:rotate-6 transition-transform"
-              />
-            </div>
+            <UserAvatar
+              user={user}
+              sizeClassName="w-12 h-12"
+              containerClassName="shadow-[0_4px_12px_rgba(0,0,0,0.03)] group hover:scale-105 transition-transform cursor-pointer"
+              imageClassName="group-hover:rotate-6 transition-transform"
+              placeholderClassName="shadow-[0_4px_12px_rgba(0,0,0,0.03)]"
+            />
             <div className="min-w-0">
               <p className="text-[#647C73] dark:text-stone-400 text-xs font-medium mb-0.5">{currentDate}</p>
               <h2 className="text-lg font-extrabold text-[#244135] dark:text-stone-50 leading-none truncate">
