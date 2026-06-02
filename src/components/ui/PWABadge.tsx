@@ -16,6 +16,11 @@ export default function PWABadge() {
     },
   });
 
+  const forceReload = () => {
+    // @ts-expect-error Legacy forceReload argument is intentionally used for mobile PWA cache busting.
+    window.location.reload(true);
+  };
+
   const handleApplyUpdate = async () => {
     if (isApplyingUpdate) return;
 
@@ -26,9 +31,20 @@ export default function PWABadge() {
     } catch (error) {
       console.error('Failed to apply service worker update.', error);
     } finally {
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 250);
+      if ('caches' in window) {
+        window.caches
+          .keys()
+          .then((names) => Promise.all(names.map((name) => window.caches.delete(name))))
+          .then(() => {
+            forceReload();
+          })
+          .catch((error: unknown) => {
+            console.error('Failed to clear browser caches before update reload.', error);
+            forceReload();
+          });
+      } else {
+        forceReload();
+      }
     }
   };
 

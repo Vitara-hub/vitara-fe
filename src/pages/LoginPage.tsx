@@ -6,10 +6,6 @@ import PopupAlert, { PopupState } from '@/components/ui/PopupAlert';
 import { isApiConfigured, vitaraApi } from '@/services/api';
 import useStore, { getFriendlyAuthError } from '@/store/useStore';
 
-interface LoginPageProps {
-  onLogin?: () => void;
-}
-
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0" aria-hidden="true">
     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -26,9 +22,7 @@ const initialPopup: PopupState = {
   type: 'info',
 };
 
-
-
-export default function LoginPage({ onLogin }: LoginPageProps) {
+export default function LoginPage() {
   const { establishSession } = useStore();
   const [isLoginView, setIsLoginView] = useState<boolean>(true);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
@@ -107,7 +101,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
       const hydratedUser = await establishSession(tokens);
       if (!hydratedUser.uid) throw new Error('Profile hydration failed.');
-      onLogin?.();
+      window.location.href = '/dashboard';
     } catch (error) {
       if (isLoginView) {
         showPopup('error', 'Login gagal', 'Email atau kata sandi salah.');

@@ -123,6 +123,10 @@ export default function App() {
 
     if (hasValidSession) {
       const nextView = !pathView || pathView === 'landing' || pathView === 'login' ? 'dashboard' : pathView;
+      if (nextView === 'dashboard' && window.location.pathname !== viewPaths.dashboard) {
+        window.location.href = viewPaths.dashboard;
+        return;
+      }
       defer(() => navigateToView(nextView, true));
       return;
     }
@@ -140,18 +144,14 @@ export default function App() {
     else document.documentElement.classList.remove('dark');
   }, [isDarkMode]);
 
-  const handleLoginSuccess = () => {
-    navigateToView('dashboard', true);
-  };
-
   const renderView = (): ReactNode => {
     if (!hasValidSession && protectedViews.has(currentView)) {
-      return <LoginPage onLogin={handleLoginSuccess} />;
+      return <LoginPage />;
     }
 
     switch (currentView) {
       case 'landing': return <LandingPage onEnter={() => navigateToView('login')} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />;
-      case 'login': return <LoginPage onLogin={handleLoginSuccess} />;
+      case 'login': return <LoginPage />;
       case 'dashboard': return <DashboardPage isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />;
       case 'logbook': return <LogbookPage />;
       case 'activity': return <ActivityPage />;
