@@ -23,6 +23,44 @@ interface UINutritionResult {
   macros: { protein: number; carbs: number; fat: number };
 }
 
+const NON_FOOD_WARNING_MESSAGE =
+  'Hmm, Vee tidak menemukan makanan di gambar ini. Coba pilih foto lain atau masukkan secara manual ya!';
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+
+  if (
+    error &&
+    typeof error === 'object' &&
+    'response' in error &&
+    error.response &&
+    typeof error.response === 'object' &&
+    'data' in error.response &&
+    error.response.data &&
+    typeof error.response.data === 'object'
+  ) {
+    const data = error.response.data as Record<string, unknown>;
+    if (typeof data.message === 'string') return data.message;
+    if (typeof data.detail === 'string') return data.detail;
+  }
+
+  return '';
+}
+
+function isNonFoodAnalysisError(error: unknown) {
+  const message = getErrorMessage(error).toLowerCase();
+
+  return (
+    message.includes('no food') ||
+    message.includes('not food') ||
+    message.includes('non-food') ||
+    message.includes('makanan tidak') ||
+    message.includes('tidak menemukan makanan') ||
+    message.includes('0 calorie') ||
+    message.includes('zero calorie')
+  );
+}
+
 export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, weight, setWeight, eyeLookX, eyeLookY }: NutritionTabProps) {
   const [mealTime, setMealTime] = useState<string>('Makan Siang');
   const [file, setFile] = useState<File | null>(null);
@@ -39,6 +77,22 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
   useEffect(() => {
     mealTimeRef.current = mealTime;
   }, [mealTime]);
+
+  const resetFoodUploadState = () => {
+    setFile(null);
+    setResult(null);
+    setSaved(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const showNonFoodWarning = () => {
+    setPopup({
+      isOpen: true,
+      type: 'info',
+      title: 'Makanan Tidak Ditemukan',
+      message: NON_FOOD_WARNING_MESSAGE,
+    });
+  };
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -58,16 +112,8 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
       const hasDetectedFood = apiResult.foods.length > 0 && apiResult.estimatedCalories > 0;
 
       if (!hasDetectedFood) {
-        setFile(null);
-        setResult(null);
-        setSaved(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        setPopup({
-          isOpen: true,
-          type: 'info',
-          title: 'Makanan Tidak Ditemukan',
-          message: 'Hmm, Vee tidak menemukan makanan di gambar ini. Coba pilih foto lain atau masukkan secara manual ya!',
-        });
+        resetFoodUploadState();
+        showNonFoodWarning();
         return;
       }
 
@@ -78,6 +124,12 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
         macros: { protein: Math.round(apiResult.estimatedCalories * 0.05), carbs: Math.round(apiResult.estimatedCalories * 0.12), fat: Math.round(apiResult.estimatedCalories * 0.03) }
       });
     } catch (error) {
+      if (isNonFoodAnalysisError(error)) {
+        resetFoodUploadState();
+        showNonFoodWarning();
+        return;
+      }
+
       // 🚀 OFFLINE FIRST: Tidak ada tebakan kalori.
       console.warn("Vision API Offline, queuing locally...", error);
       
@@ -109,10 +161,7 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
     if (!result) return;
 
     if (result.calories <= 0) {
-      setFile(null);
-      setResult(null);
-      setSaved(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      resetFoodUploadState();
       setPopup({
         isOpen: true,
         type: 'info',

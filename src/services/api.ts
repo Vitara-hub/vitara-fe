@@ -585,6 +585,10 @@ export const vitaraApi = {
   },
 
   createManualFoodLog: async (data: ManualFoodLogRequest): Promise<FoodLogItem> => {
+    if (data.calories <= 0) {
+      throw new Error('Food calories must be greater than 0 before saving.');
+    }
+
     const response = await apiClient.post<ApiEnvelope<unknown>>('/api/food', data);
     return mapFoodLogItem(unwrap(response.data));
   },
