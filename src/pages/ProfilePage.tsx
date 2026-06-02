@@ -1,5 +1,5 @@
 // src/pages/ProfilePage.tsx
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import useStore from '@/store/useStore';
 import { vitaraApi } from '@/services/api';
 import ProfileHeader from '@/components/profile/ProfileHeader';
@@ -21,6 +21,25 @@ const closedAlert: ProfileAlertState = {
   message: '',
   type: 'info',
 };
+
+const demoNotificationScenarios = [
+  {
+    title: 'Check-in Harian',
+    body: 'Hai! Vee nungguin cerita kamu hari ini nih. Yuk, luangkan waktu 2 menit.',
+  },
+  {
+    title: 'Pengingat Tidur',
+    body: 'Udah jam 22.00, waktunya istirahat biar besok Vee nggak ikutan lesu.',
+  },
+  {
+    title: 'Log Nutrisi',
+    body: 'Makan siang pakai apa hari ini? Jangan lupa masukin ke log ya!',
+  },
+  {
+    title: 'Intervensi Cepat',
+    body: 'Vee ngerasa kamu lagi tegang. Tarik napas dalam-dalam sebentar, yuk.',
+  },
+] as const;
 
 function mapProfileToAuthUser(profile: ProfileResponse, currentUser?: AuthUser | null): AuthUser {
   const displayName =
@@ -45,23 +64,31 @@ function getProfileFormValues(user: AuthUser | null) {
     fullName: user?.displayName || user?.name || '',
     username: user?.username || '',
     email: user?.email || '',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jakarta',
   };
 }
 
 export default function ProfilePage() {
   const { user, logout, setAuthUser } = useStore();
+  const notificationTimeoutRef = useRef<number | null>(null);
   const [alertConfig, setAlertConfig] = useState<ProfileAlertState>(closedAlert);
   const [isDeletingData, setIsDeletingData] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
+  const [isNotificationsEnabled, setIsNotificationsEnabled] = useState<boolean>(() => (
+    typeof Notification !== 'undefined' && Notification.permission === 'granted'
+  ));
   const [profileForm, setProfileForm] = useState(() => getProfileFormValues(user));
   const [profileBaseline, setProfileBaseline] = useState(() => getProfileFormValues(user));
   const isLoading = false;
   const hasProfileChanges =
     profileForm.fullName.trim() !== profileBaseline.fullName.trim() ||
-    profileForm.username.trim() !== profileBaseline.username.trim() ||
-    profileForm.timezone.trim() !== profileBaseline.timezone.trim();
+    profileForm.username.trim() !== profileBaseline.username.trim();
+
+  useEffect(() => () => {
+    if (notificationTimeoutRef.current !== null) {
+      window.clearTimeout(notificationTimeoutRef.current);
+    }
+  }, []);
 
   const closeAlert = () => setAlertConfig((current) => ({ ...current, isOpen: false }));
 
@@ -79,6 +106,71 @@ export default function ProfilePage() {
     void logout().finally(() => {
       window.history.replaceState({}, '', '/login');
       window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+  };
+
+  const queueDemoNotification = () => {
+    if (notificationTimeoutRef.current !== null) {
+      window.clearTimeout(notificationTimeoutRef.current);
+    }
+
+    notificationTimeoutRef.current = window.setTimeout(() => {
+      notificationTimeoutRef.current = null;
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+
+      const selectedScenario =
+        demoNotificationScenarios[Math.floor(Math.random() * demoNotificationScenarios.length)];
+      const notification = new Notification(selectedScenario.title, {
+        body: selectedScenario.body,
+      });
+      notification.onclick = () => window.focus();
+    }, 3000);
+  };
+
+  const handleNotificationToggle = async () => {
+    if (isNotificationsEnabled) {
+      setIsNotificationsEnabled(false);
+      if (notificationTimeoutRef.current !== null) {
+        window.clearTimeout(notificationTimeoutRef.current);
+        notificationTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    if (typeof Notification === 'undefined') {
+      setIsNotificationsEnabled(false);
+      setAlertConfig({
+        isOpen: true,
+        title: 'Notifikasi Ditolak',
+        message: 'Izin notifikasi ditolak',
+        type: 'error',
+        confirmLabel: 'Mengerti',
+      });
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+
+    if (permission === 'granted') {
+      setIsNotificationsEnabled(true);
+      setAlertConfig({
+        isOpen: true,
+        title: 'Notifikasi Aktif',
+        message: 'Notifikasi diaktifkan',
+        type: 'success',
+        confirmLabel: 'Mengerti',
+      });
+      queueDemoNotification();
+      return;
+    }
+
+    setIsNotificationsEnabled(false);
+    setAlertConfig({
+      isOpen: true,
+      title: 'Notifikasi Ditolak',
+      message: 'Izin notifikasi ditolak',
+      type: 'error',
+      confirmLabel: 'Mengerti',
     });
   };
 
@@ -104,15 +196,11 @@ export default function ProfilePage() {
       const updatedProfile = await vitaraApi.updateProfile({
         username: profileForm.username.trim(),
         fullName: profileForm.fullName.trim(),
-        timezone: profileForm.timezone.trim() || 'Asia/Jakarta',
       });
       const updatedUser = mapProfileToAuthUser(updatedProfile, user);
       setAuthUser(updatedUser);
 
-      const nextValues = {
-        ...getProfileFormValues(updatedUser),
-        timezone: updatedProfile.timezone || profileForm.timezone,
-      };
+      const nextValues = getProfileFormValues(updatedUser);
       setProfileForm(nextValues);
       setProfileBaseline(nextValues);
       setIsSettingsOpen(false);
@@ -239,17 +327,6 @@ export default function ProfilePage() {
                 <span className="block text-[11px] font-semibold text-[#8CAAB8] dark:text-stone-500 mt-2">Email dikelola oleh metode login dan tidak bisa diubah di sini.</span>
               </label>
 
-              <label className="block">
-                <span className="block text-[11px] font-black uppercase tracking-wider text-[#647C73] dark:text-stone-400 mb-2">Timezone</span>
-                <input
-                  type="text"
-                  value={profileForm.timezone}
-                  onChange={(event) => setProfileForm((current) => ({ ...current, timezone: event.target.value }))}
-                  disabled={isSavingProfile}
-                  className="w-full rounded-[18px] border border-[#E8F0EA] dark:border-stone-700 bg-[#F4F6F5] dark:bg-[#121413] px-4 py-3 text-sm font-bold text-[#2B4B3D] dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-[#8CE0A7] disabled:opacity-60"
-                />
-              </label>
-
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
                   type="button"
@@ -314,12 +391,34 @@ export default function ProfilePage() {
                 <ChevronRight size={18} className="text-[#A0B0A8] group-hover:text-[#2B4B3D] dark:group-hover:text-stone-100 transition-colors" />
               </button>
 
-              <button onClick={() => showUnderConstruction('Notifikasi Pengingat')} className="w-full flex items-center justify-between p-4 hover:bg-[#F4F6F5] dark:hover:bg-stone-800/50 rounded-[20px] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7]">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isNotificationsEnabled}
+                onClick={() => { void handleNotificationToggle(); }}
+                className="w-full flex items-center justify-between p-4 hover:bg-[#F4F6F5] dark:hover:bg-stone-800/50 rounded-[20px] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7]"
+              >
                 <div className="flex items-center gap-4">
                   <div aria-hidden="true" className="w-10 h-10 rounded-[14px] bg-[#FFF0E6] dark:bg-stone-800 flex items-center justify-center text-[#D96B2B] dark:text-[#FF9F66]"><Bell size={18} /></div>
-                  <span className="font-bold text-[#2B4B3D] dark:text-stone-100 text-sm">Notifikasi Pengingat</span>
+                  <div className="text-left">
+                    <span className="block font-bold text-[#2B4B3D] dark:text-stone-100 text-sm">Notifikasi Pengingat</span>
+                    <span className="block text-xs font-semibold text-[#8CAAB8] dark:text-stone-500 mt-0.5">
+                      {isNotificationsEnabled ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
                 </div>
-                <ChevronRight size={18} className="text-[#A0B0A8] group-hover:text-[#2B4B3D] dark:group-hover:text-stone-100 transition-colors" />
+                <span
+                  aria-hidden="true"
+                  className={`relative h-7 w-12 rounded-full transition-colors ${
+                    isNotificationsEnabled ? 'bg-[#1DB38A]' : 'bg-[#E8F0EA] dark:bg-stone-700'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                      isNotificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </span>
               </button>
               
               <button onClick={() => showUnderConstruction('Privasi & Keamanan')} className="w-full flex items-center justify-between p-4 hover:bg-[#F4F6F5] dark:hover:bg-stone-800/50 rounded-[20px] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7]">
