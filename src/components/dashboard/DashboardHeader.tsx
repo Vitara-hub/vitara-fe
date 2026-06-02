@@ -1,4 +1,5 @@
 // src/components/dashboard/DashboardHeader.tsx
+import { useMemo } from 'react';
 import { Sun, Moon } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
 import type { AuthUser } from '@/store/useStore';
@@ -25,8 +26,8 @@ export default function DashboardHeader({
     month: 'short',
   });
   const displayName = user?.displayName?.trim() || user?.name?.trim() || 'User';
-  const avatarSrc = getAvatarSrc(user);
-  const avatarAlt = getAvatarAlt(user);
+  const avatarSrc = useMemo(() => getAvatarSrc(user), [user]);
+  const avatarAlt = useMemo(() => getAvatarAlt(user), [user]);
 
   const hour = new Date().getHours();
   const greeting = hour >= 5 && hour < 12
@@ -50,12 +51,12 @@ export default function DashboardHeader({
           </>
         ) : (
           <>
-            <div className="w-12 h-12 rounded-[20px] bg-white dark:bg-stone-800 overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.03)] shrink-0 group hover:scale-105 transition-transform cursor-pointer">
+            <div className="w-12 h-12 rounded-full bg-white dark:bg-stone-800 overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.03)] shrink-0 group hover:scale-105 transition-transform cursor-pointer">
               <img
                 src={avatarSrc}
                 alt={avatarAlt}
                 onError={createAvatarFallbackHandler(user)}
-                className="group-hover:rotate-6 transition-transform"
+                className="w-12 h-12 rounded-full object-cover group-hover:rotate-6 transition-transform"
               />
             </div>
             <div className="min-w-0">

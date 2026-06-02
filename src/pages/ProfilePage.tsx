@@ -73,6 +73,7 @@ export default function ProfilePage() {
   const [alertConfig, setAlertConfig] = useState<ProfileAlertState>(closedAlert);
   const [isDeletingData, setIsDeletingData] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState<boolean>(false);
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState<boolean>(() => (
     typeof Notification !== 'undefined' && Notification.permission === 'granted'
@@ -91,16 +92,6 @@ export default function ProfilePage() {
   }, []);
 
   const closeAlert = () => setAlertConfig((current) => ({ ...current, isOpen: false }));
-
-  const showUnderConstruction = (feature: string) => {
-    setAlertConfig({
-      isOpen: true,
-      title: 'Under Construction',
-      message: `${feature} is currently being developed. Stay tuned!`,
-      type: 'info',
-      confirmLabel: 'Mengerti',
-    });
-  };
 
   const handleLogout = () => {
     void logout().finally(() => {
@@ -184,6 +175,18 @@ export default function ProfilePage() {
   const closeAccountSettings = () => {
     if (isSavingProfile) return;
     setIsSettingsOpen(false);
+  };
+
+  const closePrivacySettings = () => setIsPrivacyOpen(false);
+
+  const showDemoDisabledToast = () => {
+    setAlertConfig({
+      isOpen: true,
+      title: 'Mode Demo',
+      message: 'Fitur dinonaktifkan selama masa demo',
+      type: 'info',
+      confirmLabel: 'Mengerti',
+    });
   };
 
   const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -349,6 +352,56 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {isPrivacyOpen && (
+        <div className="fixed inset-0 z-[900] flex items-end sm:items-center justify-center bg-black/30 dark:bg-black/70 backdrop-blur-sm px-4 py-6 animate-in fade-in duration-200">
+          <section
+            aria-label="Privasi dan keamanan"
+            className="w-full max-w-md bg-white dark:bg-[#1A1D1B] rounded-[28px] p-6 shadow-2xl border border-[#E8F0EA] dark:border-stone-800 animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300"
+          >
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-xl font-black text-[#2B4B3D] dark:text-stone-50">Privasi & Keamanan</h2>
+                <p className="text-xs font-semibold text-[#8CAAB8] dark:text-stone-400 mt-1">Kontrol singkat untuk keamanan data Vitara.</p>
+              </div>
+              <button
+                type="button"
+                onClick={closePrivacySettings}
+                aria-label="Tutup privasi dan keamanan"
+                className="w-10 h-10 rounded-[14px] bg-[#F4F6F5] dark:bg-stone-800 text-[#647C73] dark:text-stone-400 flex items-center justify-center hover:text-[#2B4B3D] dark:hover:text-stone-100 transition-colors"
+              >
+                <X size={18} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="w-full flex items-center justify-between gap-4 p-4 rounded-[20px] bg-[#F4F6F5] dark:bg-[#121413] border border-[#E8F0EA] dark:border-stone-800">
+                <div className="min-w-0">
+                  <span className="block font-bold text-[#2B4B3D] dark:text-stone-100 text-sm">Bagikan data anonim untuk riset</span>
+                  <span className="block text-xs font-semibold text-[#8CAAB8] dark:text-stone-500 mt-0.5">OFF</span>
+                </div>
+                <span aria-hidden="true" className="relative h-7 w-12 shrink-0 rounded-full bg-[#E8F0EA] dark:bg-stone-700">
+                  <span className="absolute top-1 h-5 w-5 translate-x-1 rounded-full bg-white shadow-sm" />
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={showDemoDisabledToast}
+                className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-red-600 hover:bg-red-700 text-left transition-all active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#1A1D1B]"
+              >
+                <div aria-hidden="true" className="w-10 h-10 rounded-[14px] bg-white/15 flex items-center justify-center text-white">
+                  <Trash2 size={18} />
+                </div>
+                <div>
+                  <span className="block font-black text-white text-sm">Hapus Akun & Data</span>
+                  <span className="block text-xs font-semibold text-red-100 mt-0.5">Dinonaktifkan untuk live demo</span>
+                </div>
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       <div className="p-6 space-y-6">
         {isLoading ? (
           <>
@@ -396,11 +449,11 @@ export default function ProfilePage() {
                 role="switch"
                 aria-checked={isNotificationsEnabled}
                 onClick={() => { void handleNotificationToggle(); }}
-                className="w-full flex items-center justify-between p-4 hover:bg-[#F4F6F5] dark:hover:bg-stone-800/50 rounded-[20px] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7]"
+                className="w-full flex items-center justify-between gap-4 p-4 hover:bg-[#F4F6F5] dark:hover:bg-stone-800/50 rounded-[20px] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7]"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-0 flex-1 items-center gap-4">
                   <div aria-hidden="true" className="w-10 h-10 rounded-[14px] bg-[#FFF0E6] dark:bg-stone-800 flex items-center justify-center text-[#D96B2B] dark:text-[#FF9F66]"><Bell size={18} /></div>
-                  <div className="text-left">
+                  <div className="min-w-0 text-left">
                     <span className="block font-bold text-[#2B4B3D] dark:text-stone-100 text-sm">Notifikasi Pengingat</span>
                     <span className="block text-xs font-semibold text-[#8CAAB8] dark:text-stone-500 mt-0.5">
                       {isNotificationsEnabled ? 'ON' : 'OFF'}
@@ -409,7 +462,7 @@ export default function ProfilePage() {
                 </div>
                 <span
                   aria-hidden="true"
-                  className={`relative h-7 w-12 rounded-full transition-colors ${
+                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
                     isNotificationsEnabled ? 'bg-[#1DB38A]' : 'bg-[#E8F0EA] dark:bg-stone-700'
                   }`}
                 >
@@ -421,7 +474,7 @@ export default function ProfilePage() {
                 </span>
               </button>
               
-              <button onClick={() => showUnderConstruction('Privasi & Keamanan')} className="w-full flex items-center justify-between p-4 hover:bg-[#F4F6F5] dark:hover:bg-stone-800/50 rounded-[20px] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7]">
+              <button onClick={() => setIsPrivacyOpen(true)} className="w-full flex items-center justify-between p-4 hover:bg-[#F4F6F5] dark:hover:bg-stone-800/50 rounded-[20px] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7]">
                 <div className="flex items-center gap-4">
                   <div aria-hidden="true" className="w-10 h-10 rounded-[14px] bg-[#E8F0EA] dark:bg-stone-800 flex items-center justify-center text-[#2B7A50] dark:text-[#8CE0A7]"><Shield size={18} /></div>
                   <span className="font-bold text-[#2B4B3D] dark:text-stone-100 text-sm">Privasi & Keamanan</span>
