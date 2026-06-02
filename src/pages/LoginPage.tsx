@@ -46,6 +46,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   const toggleView = () => {
+    setPopup(initialPopup);
     setIsAnimating(true);
     setTimeout(() => {
       setIsLoginView((current) => !current);
@@ -71,6 +72,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   const handleEmailAuth = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setPopup(initialPopup);
 
     if (!isApiConfigured) {
       showPopup('error', 'Login belum tersedia', 'Backend API belum dikonfigurasi. Set VITE_API_URL lalu coba lagi.');
@@ -79,6 +81,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     if (!email.trim() || !password) {
       showPopup('error', 'Data belum lengkap', 'Isi email dan password terlebih dahulu.');
+      return;
+    }
+
+    if (!isLoginView && password.length < 6) {
+      showPopup('error', 'Daftar akun gagal', 'Kata sandi belum memenuhi syarat. Gunakan minimal 6 karakter.');
       return;
     }
 
@@ -105,7 +112,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       await establishSession(tokens);
       onLogin?.();
     } catch (error) {
-      showPopup('error', isLoginView ? 'Login gagal' : 'Daftar akun gagal', getFriendlyAuthError(error));
+      if (isLoginView) {
+        showPopup('error', 'Login gagal', 'Email atau kata sandi salah.');
+        return;
+      }
+
+      showPopup('error', 'Daftar akun gagal', getFriendlyAuthError(error));
     } finally {
       setIsEmailLoading(false);
     }
@@ -196,7 +208,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 placeholder="Kata Sandi"
                 required
                 disabled={isAuthenticating}
-                minLength={6}
                 className="w-full bg-white/50 dark:bg-stone-800/40 border border-[#E8F0EA] dark:border-stone-700/50 rounded-[20px] py-3.5 pl-12 pr-4 text-[14px] font-bold text-[#2B4B3D] dark:text-stone-100 placeholder-[#8CAAB8]/70 focus:outline-none focus:border-[#1DB38A] dark:focus:border-[#8CE0A7] focus:ring-1 focus:ring-[#1DB38A] dark:focus:ring-[#8CE0A7] transition-all backdrop-blur-sm disabled:opacity-70"
               />
             </div>
