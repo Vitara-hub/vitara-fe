@@ -136,6 +136,9 @@ async function syncPendingLog(log: ActivityLog): Promise<Partial<ActivityLog>> {
     return {
       calories,
       foods: [name],
+      protein: getPayloadNumber(log, 'protein') ?? 0,
+      carbs: getPayloadNumber(log, 'carbs') ?? 0,
+      fat: getPayloadNumber(log, 'fat') ?? 0,
       summary: `Makan: ${name} (${calories} kcal)`,
     };
   }

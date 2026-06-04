@@ -1,15 +1,19 @@
 // src/components/activity/RecentHistory.tsx
 import { ReactNode, useState } from 'react';
-import { Brain, Moon, Utensils, Heart, MessageCircle } from 'lucide-react';
+import { Brain, ChevronDown, Moon, Utensils, Heart, MessageCircle } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
 import type { ActivityHistoryItem, ActivityType } from '@/types/api';
 
 interface LogCardProps {
   icon: ReactNode;
   color: string;
+  type: ActivityType;
   title: string;
   time: string;
   score: string | number;
+  nutritionDetails?: ActivityHistoryItem['nutritionDetails'];
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
 const activityStyles: Record<ActivityType, { icon: ReactNode; color: string }> = {
@@ -87,21 +91,83 @@ function cleanActivityItems(items: ActivityHistoryItem[]) {
   });
 }
 
-function LogCard({ icon, color, title, time, score }: LogCardProps) {
-  return (
-    <div className="bg-white dark:bg-[#1A1D1B] p-4 rounded-[20px] shadow-sm flex items-center justify-between border border-[#E8F0EA] dark:border-stone-800">
-      <div className="flex items-center gap-4 min-w-0">
-        <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 ${color}`}>{icon}</div>
-        <div className="min-w-0">
-          <p className="text-[13px] font-bold text-[#2B4B3D] dark:text-stone-100 mb-0.5 truncate">{title}</p>
-          <p className="text-[10px] font-medium text-[#A0B0A8]">{time}</p>
+function formatNutritionValue(value: number | null | undefined, suffix: string) {
+  return value == null ? '-' : `${value}${suffix}`;
+}
+
+function LogCard({
+  icon,
+  color,
+  type,
+  title,
+  time,
+  score,
+  nutritionDetails,
+  isExpanded = false,
+  onToggle,
+}: LogCardProps) {
+  const isFood = type === 'food';
+  const cardContent = (
+    <>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 ${color}`}>{icon}</div>
+          <div className="min-w-0">
+            <p className="text-[13px] font-bold text-[#2B4B3D] dark:text-stone-100 mb-0.5 truncate">{title}</p>
+            <p className="text-[10px] font-medium text-[#A0B0A8]">{time}</p>
+          </div>
         </div>
+        {isFood ? (
+          <ChevronDown
+            size={16}
+            aria-hidden="true"
+            className={`shrink-0 text-[#A0B0A8] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+          />
+        ) : (
+          <span className="text-xs font-black text-[#2B4B3D] dark:text-stone-50 bg-[#FAF9F6] dark:bg-stone-800 px-3 py-1.5 rounded-lg border border-[#E8F0EA] dark:border-stone-700 shrink-0">
+            {score}
+          </span>
+        )}
       </div>
-      <div className="flex items-center gap-2 shrink-0 ml-3">
-        <span className="text-xs font-black text-[#2B4B3D] dark:text-stone-50 bg-[#FAF9F6] dark:bg-stone-800 px-3 py-1.5 rounded-lg border border-[#E8F0EA] dark:border-stone-700">
-          {score}
-        </span>
-      </div>
+
+      {isFood && (
+        <div
+          className={`grid grid-cols-4 gap-2 overflow-hidden transition-all duration-200 group-hover:mt-4 group-hover:max-h-20 group-hover:opacity-100 ${
+            isExpanded ? 'mt-4 max-h-20 opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          {[
+            ['Kalori', formatNutritionValue(nutritionDetails?.calories, ' kcal')],
+            ['Protein', formatNutritionValue(nutritionDetails?.protein, 'g')],
+            ['Karbo', formatNutritionValue(nutritionDetails?.carbs, 'g')],
+            ['Lemak', formatNutritionValue(nutritionDetails?.fat, 'g')],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-[12px] bg-[#FAF9F6] dark:bg-stone-800 px-2 py-2 text-center">
+              <p className="text-[9px] font-bold text-[#A0B0A8]">{label}</p>
+              <p className="mt-0.5 text-[11px] font-black text-[#2B4B3D] dark:text-stone-100">{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
+  if (isFood) {
+    return (
+      <button
+        type="button"
+        aria-expanded={isExpanded}
+        onClick={onToggle}
+        className="group w-full bg-white dark:bg-[#1A1D1B] p-4 rounded-[20px] shadow-sm border border-[#E8F0EA] dark:border-stone-800 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CE0A7]"
+      >
+        {cardContent}
+      </button>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-[#1A1D1B] p-4 rounded-[20px] shadow-sm border border-[#E8F0EA] dark:border-stone-800">
+      {cardContent}
     </div>
   );
 }
@@ -128,6 +194,7 @@ interface RecentHistoryProps {
 
 export default function RecentHistory({ items, isLoading = false }: RecentHistoryProps) {
   const [showAll, setShowAll] = useState<boolean>(false);
+  const [expandedFoodId, setExpandedFoodId] = useState<string | number | null>(null);
   const cleanItems = cleanActivityItems(items);
   const canExpand = cleanItems.length > 6;
   const displayedItems = showAll ? cleanItems : cleanItems.slice(0, 6);
@@ -160,9 +227,13 @@ export default function RecentHistory({ items, isLoading = false }: RecentHistor
                 key={item.id}
                 icon={style.icon}
                 color={style.color}
+                type={item.type}
                 title={item.title}
                 time={item.time}
                 score={item.score}
+                nutritionDetails={item.nutritionDetails}
+                isExpanded={expandedFoodId === item.id}
+                onToggle={() => setExpandedFoodId((current) => current === item.id ? null : item.id)}
               />
             );
           })

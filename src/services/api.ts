@@ -345,10 +345,22 @@ function mapActivityRecentItem(raw: unknown): ActivityRecentItem {
     createdAt: readString(raw, 'createdAt', 'created_at') ?? '',
     title: readString(raw, 'title') ?? 'Aktivitas',
     meta: {
-      calories: readNumber(meta, 'calories') ?? null,
-      qualityScore: readNumber(meta, 'qualityScore', 'quality_score') ?? null,
-      emotion: readNullableString(meta, 'emotion'),
-      stressScore: readNumber(meta, 'stressScore', 'stress_score') ?? null,
+      name:
+        readNullableString(meta, 'name', 'foodName', 'food_name') ??
+        readNullableString(raw, 'name', 'foodName', 'food_name'),
+      calories: readNumber(meta, 'calories') ?? readNumber(raw, 'calories') ?? null,
+      protein: readNumber(meta, 'protein') ?? readNumber(raw, 'protein') ?? null,
+      carbs: readNumber(meta, 'carbs') ?? readNumber(raw, 'carbs') ?? null,
+      fat: readNumber(meta, 'fat') ?? readNumber(raw, 'fat') ?? null,
+      qualityScore:
+        readNumber(meta, 'qualityScore', 'quality_score') ??
+        readNumber(raw, 'qualityScore', 'quality_score') ??
+        null,
+      emotion: readNullableString(meta, 'emotion') ?? readNullableString(raw, 'emotion'),
+      stressScore:
+        readNumber(meta, 'stressScore', 'stress_score') ??
+        readNumber(raw, 'stressScore', 'stress_score') ??
+        null,
       wpm: readNumber(meta, 'wpm') ?? null,
       endTime: readNullableString(meta, 'endTime', 'end_time'),
     },
@@ -699,7 +711,36 @@ export const vitaraApi = {
       '/api/activity/recent',
       { params },
     );
-    return mapPaginatedResponse(unwrap(response.data), mapActivityRecentItem).items;
+    const recentItems = mapPaginatedResponse(unwrap(response.data), mapActivityRecentItem).items;
+    if (!recentItems.some((item) => item.type === 'food')) return recentItems;
+
+    try {
+      const foodLogs = await vitaraApi.getFoodLogs({ limit: 100 });
+      const foodById = new Map(foodLogs.items.map((food) => [food.id, food]));
+
+      return recentItems.map((item) => {
+        if (item.type !== 'food') return item;
+
+        const food = foodById.get(item.id);
+        if (!food) return item;
+
+        return {
+          ...item,
+          title: food.name || item.title,
+          meta: {
+            ...item.meta,
+            name: food.name || item.meta.name,
+            calories: food.calories,
+            protein: food.protein,
+            carbs: food.carbs,
+            fat: food.fat,
+          },
+        };
+      });
+    } catch (error) {
+      console.warn('Food details unavailable for activity enrichment.', error);
+      return recentItems;
+    }
   },
 
   getActivityFeed: async (period: '7d' | '30d' = '7d'): Promise<ActivityDataResponse> => {

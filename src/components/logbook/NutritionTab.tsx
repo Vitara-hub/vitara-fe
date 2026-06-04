@@ -176,7 +176,16 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
     setSaved(true);
 
     updateMetric('food', { estimatedCalories: result.calories });
-    addLog({ type: 'food', summary: `Makan: ${result.name} (${result.calories} kcal)`, calories: result.calories, foods: result.name.split(', '), syncStatus: 'synced' });
+    addLog({
+      type: 'food',
+      summary: `Makan: ${result.name} (${result.calories} kcal)`,
+      calories: result.calories,
+      foods: result.name.split(', '),
+      protein: result.macros.protein,
+      carbs: result.macros.carbs,
+      fat: result.macros.fat,
+      syncStatus: 'synced',
+    });
     void refreshDashboardAndActivity();
   };
 

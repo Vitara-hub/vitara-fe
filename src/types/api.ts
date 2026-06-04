@@ -212,7 +212,11 @@ export interface ActivityRecentItem {
   createdAt: string;
   title: string;
   meta: {
+    name?: string | null;
     calories?: number | null;
+    protein?: number | null;
+    carbs?: number | null;
+    fat?: number | null;
     qualityScore?: number | null;
     emotion?: string | null;
     stressScore?: number | null;
@@ -301,6 +305,12 @@ export interface ActivityHistoryItem {
   title: string;
   time: string;
   score: string | number;
+  nutritionDetails?: {
+    calories: number | null;
+    protein: number | null;
+    carbs: number | null;
+    fat: number | null;
+  };
 }
 
 export interface ActivityDataResponse {

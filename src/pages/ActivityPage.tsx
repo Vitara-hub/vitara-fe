@@ -65,15 +65,15 @@ function getLogScore(log: ActivityLog) {
 }
 
 function getHistoryTitle(log: ActivityLog) {
-  if (log.type === 'journal') return 'Jurnal Sentimen';
-  if (log.type === 'sleep') return 'Kualitas Tidur';
-  if (log.type === 'food') return 'Nutrition Lens';
+  if (log.type === 'journal') return 'Emotion';
+  if (log.type === 'sleep') return 'Quality Score';
+  if (log.type === 'food') return log.foods?.join(', ') || 'Makanan';
   return 'Percakapan Vee';
 }
 
 function getHistoryScore(log: ActivityLog) {
   if (log.type === 'journal') return log.emotion ?? 'Tercatat';
-  if (log.type === 'sleep') return `${log.qualityScore ?? getLogScore(log)}/100`;
+  if (log.type === 'sleep') return log.qualityScore ?? getLogScore(log);
   if (log.type === 'food') return typeof log.calories === 'number' ? `${log.calories} kcal` : 'Tercatat';
   return log.syncStatus === 'pending' ? 'Pending' : 'Tersimpan';
 }
@@ -136,6 +136,14 @@ function buildLocalActivityData(activityHistory: ActivityLog[]): ActivityDataRes
     title: getHistoryTitle(log),
     time: formatHistoryTime(log.timestamp),
     score: getHistoryScore(log),
+    nutritionDetails: log.type === 'food'
+      ? {
+          calories: log.calories ?? null,
+          protein: log.protein ?? null,
+          carbs: log.carbs ?? null,
+          fat: log.fat ?? null,
+        }
+      : undefined,
   }));
 
   return {

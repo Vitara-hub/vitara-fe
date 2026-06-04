@@ -23,9 +23,15 @@ function mapRecentItem(item: ActivityRecentItem): ActivityHistoryItem {
     return {
       id: item.id,
       type: 'food',
-      title: item.title,
+      title: item.meta.name?.trim() || item.title,
       time: formatActivityTime(item.createdAt),
       score: item.meta.calories != null ? `${item.meta.calories} kcal` : 'Tercatat',
+      nutritionDetails: {
+        calories: item.meta.calories ?? null,
+        protein: item.meta.protein ?? null,
+        carbs: item.meta.carbs ?? null,
+        fat: item.meta.fat ?? null,
+      },
     };
   }
 
@@ -33,9 +39,9 @@ function mapRecentItem(item: ActivityRecentItem): ActivityHistoryItem {
     return {
       id: item.id,
       type: 'sleep',
-      title: item.title,
+      title: 'Quality Score',
       time: formatActivityTime(item.createdAt),
-      score: item.meta.qualityScore != null ? `${item.meta.qualityScore}/100` : 'Tercatat',
+      score: item.meta.qualityScore ?? 'Tercatat',
     };
   }
 
@@ -43,7 +49,7 @@ function mapRecentItem(item: ActivityRecentItem): ActivityHistoryItem {
     return {
       id: item.id,
       type: 'journal',
-      title: item.title,
+      title: 'Emotion',
       time: formatActivityTime(item.createdAt),
       score: item.meta.emotion ?? 'Tercatat',
     };
@@ -52,12 +58,9 @@ function mapRecentItem(item: ActivityRecentItem): ActivityHistoryItem {
   return {
     id: item.id,
     type: 'stress',
-    title: item.title,
+    title: 'Stress Score',
     time: formatActivityTime(item.createdAt),
-    score:
-      item.meta.stressScore != null
-        ? `${Math.round(item.meta.stressScore * 100)}% stres`
-        : 'Tercatat',
+    score: item.meta.stressScore ?? 'Tercatat',
   };
 }
 

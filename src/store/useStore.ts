@@ -28,7 +28,14 @@ export interface BaseActivityLog {
 }
 
 export interface JournalLog extends BaseActivityLog { type: 'journal'; emotion?: string; stressLevel?: number; }
-export interface FoodLog extends BaseActivityLog { type: 'food'; calories?: number; foods?: string[]; }
+export interface FoodLog extends BaseActivityLog {
+  type: 'food';
+  calories?: number;
+  foods?: string[];
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+}
 export interface SleepLog extends BaseActivityLog { type: 'sleep'; qualityScore?: number; }
 export interface ChatLog extends BaseActivityLog { type: 'chat'; }
 
@@ -113,15 +120,15 @@ function formatActivityTime(timestamp: string) {
 }
 
 function getActivityTitle(log: ActivityLog) {
-  if (log.type === 'journal') return 'Jurnal Sentimen';
-  if (log.type === 'sleep') return 'Kualitas Tidur';
-  if (log.type === 'food') return 'Nutrition Lens';
+  if (log.type === 'journal') return 'Emotion';
+  if (log.type === 'sleep') return 'Quality Score';
+  if (log.type === 'food') return log.foods?.join(', ') || 'Makanan';
   return 'Percakapan Vee';
 }
 
 function getActivityScore(log: ActivityLog) {
   if (log.type === 'journal') return log.emotion ?? 'Tercatat';
-  if (log.type === 'sleep') return typeof log.qualityScore === 'number' ? `${log.qualityScore}/100` : 'Pending';
+  if (log.type === 'sleep') return log.qualityScore ?? 'Pending';
   if (log.type === 'food') return typeof log.calories === 'number' ? `${log.calories} kcal` : 'Tercatat';
   return log.syncStatus === 'pending' ? 'Pending' : 'Tersimpan';
 }
@@ -133,6 +140,14 @@ function mapLocalActivityLog(log: ActivityLog): ActivityHistoryItem {
     title: getActivityTitle(log),
     time: formatActivityTime(log.timestamp),
     score: getActivityScore(log),
+    nutritionDetails: log.type === 'food'
+      ? {
+          calories: log.calories ?? null,
+          protein: log.protein ?? null,
+          carbs: log.carbs ?? null,
+          fat: log.fat ?? null,
+        }
+      : undefined,
   };
 }
 
