@@ -7,6 +7,7 @@ import {
   setAuthTokens,
 } from '@/services/authSession';
 import { mapActivityFeed } from '@/utils/activityMapper';
+import { estimateNutritionMacros, hasNutritionMacros } from '@/utils/nutrition';
 import type {
   ActivityDataResponse,
   ActivityRecentItem,
@@ -218,13 +219,23 @@ function mapFoodAnalyzeResponse(raw: unknown): FoodAnalyzeResponse {
 }
 
 function mapFoodLogItem(raw: unknown): FoodLogItem {
-  return {
-    id: readString(raw, 'id', 'entryId', 'entry_id') ?? '',
-    name: readString(raw, 'name') ?? '',
-    calories: readNumber(raw, 'calories', 'estimatedCalories', 'estimated_calories') ?? 0,
+  const calories = readNumber(raw, 'calories', 'estimatedCalories', 'estimated_calories') ?? 0;
+  const mappedMacros = {
     protein: readNumber(raw, 'protein') ?? 0,
     carbs: readNumber(raw, 'carbs') ?? 0,
     fat: readNumber(raw, 'fat') ?? 0,
+  };
+  const macros = hasNutritionMacros(mappedMacros)
+    ? mappedMacros
+    : estimateNutritionMacros(calories);
+
+  return {
+    id: readString(raw, 'id', 'entryId', 'entry_id') ?? '',
+    name: readString(raw, 'name') ?? '',
+    calories,
+    protein: macros.protein,
+    carbs: macros.carbs,
+    fat: macros.fat,
     source: readString(raw, 'source') ?? 'manual',
     consumedAt: readString(raw, 'consumedAt', 'consumed_at') ?? '',
     createdAt: readString(raw, 'createdAt', 'created_at') ?? '',

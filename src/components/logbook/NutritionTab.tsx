@@ -5,6 +5,7 @@ import VeeMascot from '@/components/mascot/VeeMascot';
 import { vitaraApi } from '@/services/api';
 import useStore, { VeeHealthStatus } from '@/store/useStore';
 import PopupAlert, { PopupState } from '@/components/ui/PopupAlert';
+import { estimateNutritionMacros } from '@/utils/nutrition';
 
 interface NutritionTabProps {
   jumpDirection?: 'fromLeft' | 'fromRight' | 'none' | null;
@@ -121,7 +122,7 @@ export default function NutritionTab({ jumpDirection, veeHealth, setVeeHealth, w
         name: apiResult.foods.join(', '),
         tags: ['Makanan AI Terdeteksi', mealTimeRef.current],
         calories: apiResult.estimatedCalories,
-        macros: { protein: Math.round(apiResult.estimatedCalories * 0.05), carbs: Math.round(apiResult.estimatedCalories * 0.12), fat: Math.round(apiResult.estimatedCalories * 0.03) }
+        macros: estimateNutritionMacros(apiResult.estimatedCalories),
       });
     } catch (error) {
       if (isNonFoodAnalysisError(error)) {

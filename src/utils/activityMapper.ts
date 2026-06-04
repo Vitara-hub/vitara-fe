@@ -5,6 +5,7 @@ import type {
   ActivitySummary,
   DailyHealthSnapshot,
 } from '@/types/api';
+import { estimateNutritionMacros, hasNutritionMacros } from '@/utils/nutrition';
 
 function formatActivityTime(iso: string) {
   const date = new Date(iso);
@@ -20,6 +21,16 @@ function formatActivityTime(iso: string) {
 
 function mapRecentItem(item: ActivityRecentItem): ActivityHistoryItem {
   if (item.type === 'food') {
+    const calories = item.meta.calories ?? 0;
+    const mappedMacros = {
+      protein: item.meta.protein ?? 0,
+      carbs: item.meta.carbs ?? 0,
+      fat: item.meta.fat ?? 0,
+    };
+    const macros = hasNutritionMacros(mappedMacros)
+      ? mappedMacros
+      : estimateNutritionMacros(calories);
+
     return {
       id: item.id,
       type: 'food',
@@ -28,9 +39,9 @@ function mapRecentItem(item: ActivityRecentItem): ActivityHistoryItem {
       score: item.meta.calories != null ? `${item.meta.calories} kcal` : 'Tercatat',
       nutritionDetails: {
         calories: item.meta.calories ?? null,
-        protein: item.meta.protein ?? null,
-        carbs: item.meta.carbs ?? null,
-        fat: item.meta.fat ?? null,
+        protein: macros.protein,
+        carbs: macros.carbs,
+        fat: macros.fat,
       },
     };
   }
@@ -60,8 +71,15 @@ function mapRecentItem(item: ActivityRecentItem): ActivityHistoryItem {
     type: 'stress',
     title: 'Stress Score',
     time: formatActivityTime(item.createdAt),
-    score: item.meta.stressScore ?? 'Tercatat',
+    score: formatStressPercentage(item.meta.stressScore),
   };
+}
+
+function formatStressPercentage(stressScore: number | null | undefined) {
+  if (stressScore == null || !Number.isFinite(stressScore)) return 'Tercatat';
+
+  const percentage = stressScore <= 1 ? stressScore * 100 : stressScore;
+  return `${Math.round(Math.max(0, Math.min(100, percentage)))}%`;
 }
 
 function buildChart(daily: DailyHealthSnapshot[]) {
