@@ -6,6 +6,11 @@ const STORAGE_KEYS = {
   expiresAt: 'vitara_token_expires_at',
 } as const;
 
+const SESSION_KEYS = {
+  postLoginHardRefresh: 'vitara_post_login_hard_refresh',
+  postLoginDataRefresh: 'vitara_post_login_data_refresh',
+} as const;
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
@@ -23,6 +28,8 @@ export function clearAuthTokens(): void {
   localStorage.removeItem(STORAGE_KEYS.accessToken);
   localStorage.removeItem(STORAGE_KEYS.refreshToken);
   localStorage.removeItem(STORAGE_KEYS.expiresAt);
+  sessionStorage.removeItem(SESSION_KEYS.postLoginHardRefresh);
+  sessionStorage.removeItem(SESSION_KEYS.postLoginDataRefresh);
 }
 
 export function getAccessToken(): string | null {
@@ -41,6 +48,26 @@ export function isAccessTokenExpired(skewMs = 60_000): boolean {
   const raw = localStorage.getItem(STORAGE_KEYS.expiresAt);
   if (!raw) return true;
   return Date.now() >= Number(raw) - skewMs;
+}
+
+export function markPostLoginPreparation(): void {
+  sessionStorage.setItem(SESSION_KEYS.postLoginHardRefresh, 'pending');
+  sessionStorage.setItem(SESSION_KEYS.postLoginDataRefresh, 'pending');
+}
+
+export function consumePostLoginHardRefresh(): boolean {
+  if (sessionStorage.getItem(SESSION_KEYS.postLoginHardRefresh) !== 'pending') return false;
+
+  sessionStorage.removeItem(SESSION_KEYS.postLoginHardRefresh);
+  return true;
+}
+
+export function hasPostLoginDataRefresh(): boolean {
+  return sessionStorage.getItem(SESSION_KEYS.postLoginDataRefresh) === 'pending';
+}
+
+export function clearPostLoginDataRefresh(): void {
+  sessionStorage.removeItem(SESSION_KEYS.postLoginDataRefresh);
 }
 
 export function hasOAuthCallbackParams(): boolean {

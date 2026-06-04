@@ -181,16 +181,29 @@ export const useAutoSync = () => {
             const syncedFields = await syncPendingLog(log);
 
             useStore.setState((state) => ({
-              activityHistory: state.activityHistory.map((item) =>
-                item.id === log.id
-                  ? {
-                      ...item,
-                      ...syncedFields,
-                      syncStatus: 'synced',
-                      pendingPayload: undefined,
-                    }
-                  : item
-              ),
+              activityHistory: log.type === 'journal'
+                ? state.activityHistory.filter((item) => item.id !== log.id)
+                : state.activityHistory.map((item) =>
+                    item.id === log.id
+                      ? {
+                          ...item,
+                          ...syncedFields,
+                          syncStatus: 'synced',
+                          pendingPayload: undefined,
+                        }
+                      : item
+                  ),
+              activityData: log.type === 'journal' && state.activityData.data
+                ? {
+                    ...state.activityData,
+                    data: {
+                      ...state.activityData.data,
+                      history: state.activityData.data.history.filter(
+                        (item) => String(item.id) !== `local-${log.id}`,
+                      ),
+                    },
+                  }
+                : state.activityData,
               isServerDown: false,
             }));
 

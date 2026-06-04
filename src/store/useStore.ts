@@ -6,6 +6,7 @@ import {
   getOAuthHashTokens,
   hasAuthTokens,
   hasOAuthCallbackParams,
+  markPostLoginPreparation,
   removeOAuthParamsFromUrl,
   setAuthTokens,
 } from '@/services/authSession';
@@ -164,7 +165,9 @@ function mergeLocalActivityLogs(
   data: ActivityDataResponse | null,
   activityHistory: ActivityLog[],
 ): ActivityDataResponse | null {
-  const localItems = activityHistory.map(mapLocalActivityLog);
+  const localItems = activityHistory
+    .filter((log) => log.type !== 'journal')
+    .map(mapLocalActivityLog);
   if (!data) {
     return localItems.length
       ? { average_score: 0, weekly_change_percent: 0, chart: [], history: localItems }
@@ -344,6 +347,7 @@ const useStore = create<StoreState>()(
             const tokens = await vitaraApi.completeGoogleCallback({ code });
             const user = await applyAuthTokens(tokens);
             removeOAuthParamsFromUrl();
+            markPostLoginPreparation();
             set({ isAuthenticated: true, isAuthLoading: false, user });
             return;
           }
@@ -352,6 +356,7 @@ const useStore = create<StoreState>()(
             const tokens = await vitaraApi.completeGoogleCallback(hashTokens);
             const user = await applyAuthTokens(tokens);
             removeOAuthParamsFromUrl();
+            markPostLoginPreparation();
             set({ isAuthenticated: true, isAuthLoading: false, user });
             return;
           }
@@ -386,6 +391,10 @@ const useStore = create<StoreState>()(
       
       activityHistory: [],
       addLog: (log) => set((state) => {
+        if (log.type === 'journal' && log.syncStatus === 'synced') {
+          return state;
+        }
+
         if (log.type === 'food' && typeof log.calories === 'number' && log.calories <= 0) {
           return state;
         }
@@ -482,13 +491,39 @@ const useStore = create<StoreState>()(
         isDarkMode: state.isDarkMode,
         veeHealth: state.veeHealth,
         veeWeight: state.veeWeight,
-        activityHistory: state.activityHistory,
+        activityHistory: state.activityHistory.filter(
+          (log) => log.type !== 'journal' || log.syncStatus === 'pending',
+        ),
         latestMetrics: state.latestMetrics,
         dashboardHealthScore: state.dashboardHealthScore,
         activityData: state.activityData,
         chatMessages: state.chatMessages,
         isServerDown: state.isServerDown,
       }),
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<StoreState>;
+        const activityHistory = persisted.activityHistory?.filter(
+          (log) => log.type !== 'journal' || log.syncStatus === 'pending',
+        ) ?? currentState.activityHistory;
+        const activityData = persisted.activityData?.data
+          ? {
+              ...persisted.activityData,
+              data: {
+                ...persisted.activityData.data,
+                history: persisted.activityData.data.history.filter(
+                  (item) => !(item.type === 'journal' && String(item.id).startsWith('local-')),
+                ),
+              },
+            }
+          : persisted.activityData ?? currentState.activityData;
+
+        return {
+          ...currentState,
+          ...persisted,
+          activityHistory,
+          activityData,
+        };
+      },
     }
   )
 );

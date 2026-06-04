@@ -11,6 +11,11 @@ import Sidebar from '@/components/layout/Sidebar';
 import SplashScreen from '@/components/layout/SplashScreen';
 import PWABadge from '@/components/ui/PWABadge';
 import Skeleton from '@/components/ui/Skeleton';
+import {
+  clearPostLoginDataRefresh,
+  consumePostLoginHardRefresh,
+  hasPostLoginDataRefresh,
+} from '@/services/authSession';
 
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
@@ -73,7 +78,17 @@ function getViewFromPath(pathname: string): ViewType | null {
 }
 
 export default function App() {
-  const { isAuthenticated, isAuthLoading, user, isDarkMode, toggleDarkMode, veeHealth, initAuth } = useStore();
+  const {
+    isAuthenticated,
+    isAuthLoading,
+    user,
+    isDarkMode,
+    toggleDarkMode,
+    veeHealth,
+    initAuth,
+    clearCachedPageData,
+    refreshDashboardAndActivity,
+  } = useStore();
   const [currentView, setCurrentView] = useState<ViewType>(() => getViewFromPath(window.location.pathname) || 'landing');
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const isKeyboardVisible = useKeyboardVisible();
@@ -115,6 +130,33 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (isAuthLoading || !hasValidSession) return;
+
+    if (consumePostLoginHardRefresh()) {
+      clearCachedPageData();
+      window.location.replace(viewPaths.dashboard);
+      return;
+    }
+
+    if (!hasPostLoginDataRefresh()) return;
+
+    clearCachedPageData();
+
+    void refreshDashboardAndActivity()
+      .catch((error) => {
+        console.warn('Initial dashboard refresh after login failed.', error);
+      })
+      .finally(() => {
+        clearPostLoginDataRefresh();
+      });
+  }, [
+    clearCachedPageData,
+    hasValidSession,
+    isAuthLoading,
+    refreshDashboardAndActivity,
+  ]);
+
+  useEffect(() => {
     if (isAuthLoading) return;
 
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
@@ -122,6 +164,8 @@ export default function App() {
     const pathView = getViewFromPath(window.location.pathname);
 
     if (hasValidSession) {
+      if (hasPostLoginDataRefresh()) return;
+
       const nextView = !pathView || pathView === 'landing' || pathView === 'login' ? 'dashboard' : pathView;
       if (nextView === 'dashboard' && window.location.pathname !== viewPaths.dashboard) {
         window.location.href = viewPaths.dashboard;

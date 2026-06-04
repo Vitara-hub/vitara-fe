@@ -67,13 +67,17 @@ function isUnknownItem(item: ActivityHistoryItem) {
   return normalizeText(item.title) === 'unknown' || normalizeText(item.score) === 'unknown';
 }
 
+function isLocalJournalItem(item: ActivityHistoryItem) {
+  return item.type === 'journal' && String(item.id).startsWith('local-');
+}
+
 function isGenericItem(item: ActivityHistoryItem) {
   return GENERIC_TITLES.has(normalizeText(item.title));
 }
 
 function cleanActivityItems(items: ActivityHistoryItem[]) {
   const structurallyValidItems = items.filter(
-    (item) => !isZeroCalorieFood(item) && !isUnknownItem(item),
+    (item) => !isZeroCalorieFood(item) && !isUnknownItem(item) && !isLocalJournalItem(item),
   );
 
   return structurallyValidItems.filter((item, _index, allItems) => {

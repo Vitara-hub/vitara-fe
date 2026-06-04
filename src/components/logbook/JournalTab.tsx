@@ -78,8 +78,7 @@ export default function JournalTab({ jumpDirection, veeHealth, setVeeHealth, wei
       setVeeHealth(newHealth); 
       updateMetric('nlp', { emotion: journalResult.emotion, stressLevel: journalResult.stressLevel });
       updateMetric('typing', { stressScore: typingResult.stressScore });
-      addLog({ type: 'journal', summary: text.substring(0, 50) + '...', emotion: journalResult.emotion, stressLevel: journalResult.stressLevel, syncStatus: 'synced' });
-      void refreshDashboardAndActivity();
+      await refreshDashboardAndActivity();
 
       setPopup({ isOpen: true, type: 'success', title: 'Analisis Selesai!', message: `Emosi Dominan: ${journalResult.emotion}\nTopik: ${journalResult.topics.join(', ')}` });
 

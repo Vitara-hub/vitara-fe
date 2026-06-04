@@ -4,6 +4,7 @@ import { ArrowRight, Lock, Mail, User } from 'lucide-react';
 import VitaraLogo from '@/components/ui/VitaraLogo';
 import PopupAlert, { PopupState } from '@/components/ui/PopupAlert';
 import { isApiConfigured, vitaraApi } from '@/services/api';
+import { markPostLoginPreparation } from '@/services/authSession';
 import useStore, { getFriendlyAuthError } from '@/store/useStore';
 
 const GoogleIcon = () => (
@@ -23,7 +24,7 @@ const initialPopup: PopupState = {
 };
 
 export default function LoginPage() {
-  const { establishSession } = useStore();
+  const { establishSession, clearCachedPageData } = useStore();
   const [isLoginView, setIsLoginView] = useState<boolean>(true);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string>('');
@@ -101,7 +102,9 @@ export default function LoginPage() {
 
       const hydratedUser = await establishSession(tokens);
       if (!hydratedUser.uid) throw new Error('Profile hydration failed.');
-      window.location.href = '/dashboard';
+      clearCachedPageData();
+      markPostLoginPreparation();
+      window.location.replace('/dashboard');
     } catch (error) {
       if (isLoginView) {
         showPopup('error', 'Login gagal', 'Email atau kata sandi salah.');
