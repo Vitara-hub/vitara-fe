@@ -4,7 +4,6 @@ import { ArrowRight, Lock, Mail, User, Eye, EyeOff } from 'lucide-react';
 import VitaraLogo from '@/components/ui/VitaraLogo';
 import PopupAlert, { PopupState } from '@/components/ui/PopupAlert';
 import { isApiConfigured, vitaraApi } from '@/services/api';
-import { markPostLoginPreparation } from '@/services/authSession';
 import useStore, { getFriendlyAuthError } from '@/store/useStore';
 
 const GoogleIcon = () => (
@@ -24,7 +23,8 @@ const initialPopup: PopupState = {
 };
 
 export default function LoginPage() {
-  const { establishSession, clearCachedPageData } = useStore();
+  // Tambahkan refreshDashboardAndActivity
+  const { establishSession, clearCachedPageData, refreshDashboardAndActivity } = useStore();
 
   const [isLoginView, setIsLoginView] = useState<boolean>(true);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
@@ -114,8 +114,13 @@ export default function LoginPage() {
       if (!hydratedUser.uid) throw new Error('Profile hydration failed.');
       
       clearCachedPageData();
-      markPostLoginPreparation();
-      window.location.replace('/dashboard');
+      
+      // HAPUS HARD REDIRECT, GANTI DENGAN SOFT NAVIGATION
+      window.history.replaceState({}, '', '/dashboard');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      
+      // Refresh data di background agar instan
+      void refreshDashboardAndActivity();
 
     } catch (error) {
       if (isLoginView) {

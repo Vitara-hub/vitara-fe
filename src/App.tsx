@@ -1,3 +1,4 @@
+// src/App.tsx
 import { useCallback, useState, useEffect, lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
 import useStore from '@/store/useStore';
@@ -5,7 +6,6 @@ import { useAutoSync } from '@/hooks/useAutoSync';
 import useKeyboardVisible from '@/hooks/useKeyboardVisible';
 import useHardwareEcoMode from '@/hooks/useHardwareEcoMode';
 import { hasAuthTokens } from '@/services/authSession';
-
 import BottomNav from '@/components/layout/BottomNav';
 import Sidebar from '@/components/layout/Sidebar';
 import SplashScreen from '@/components/layout/SplashScreen';
@@ -38,7 +38,6 @@ const viewPaths: Record<ViewType, string> = {
 };
 
 const protectedViews = new Set<ViewType>(['dashboard', 'logbook', 'activity', 'chat', 'profile']);
-
 
 interface NavigatorWithStandalone extends Navigator {
   standalone?: boolean;
@@ -89,31 +88,28 @@ export default function App() {
     clearCachedPageData,
     refreshDashboardAndActivity,
   } = useStore();
+
   const [currentView, setCurrentView] = useState<ViewType>(() => getViewFromPath(window.location.pathname) || 'landing');
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const isKeyboardVisible = useKeyboardVisible();
   const hasValidSession = isAuthenticated && Boolean(user) && hasAuthTokens();
-  
   const isEcoMode = useHardwareEcoMode();
+
   useAutoSync();
 
   const navigateToView = useCallback((view: ViewType, replace = false) => {
     setCurrentView(view);
-
     const nextPath = viewPaths[view];
     if (window.location.pathname === nextPath) return;
-
     if (replace) window.history.replaceState({}, '', nextPath);
     else window.history.pushState({}, '', nextPath);
   }, []);
 
   useEffect(() => {
     let isMounted = true;
-
     void initAuth().then(() => {
       if (!isMounted) return;
     });
-
     return () => {
       isMounted = false;
     };
@@ -124,7 +120,6 @@ export default function App() {
       const nextView = getViewFromPath(window.location.pathname);
       if (nextView) setCurrentView(nextView);
     };
-
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
@@ -133,15 +128,13 @@ export default function App() {
     if (isAuthLoading || !hasValidSession) return;
 
     if (consumePostLoginHardRefresh()) {
-      clearCachedPageData();
-      window.location.replace(viewPaths.dashboard);
-      return;
+      // Hilangkan Hard Refresh, gunakan routing SPA yang mulus
+      defer(() => navigateToView('dashboard', true));
     }
 
     if (!hasPostLoginDataRefresh()) return;
-
+    
     clearCachedPageData();
-
     void refreshDashboardAndActivity()
       .catch((error) => {
         console.warn('Initial dashboard refresh after login failed.', error);
@@ -154,23 +147,27 @@ export default function App() {
     hasValidSession,
     isAuthLoading,
     refreshDashboardAndActivity,
+    navigateToView
   ]);
 
   useEffect(() => {
     if (isAuthLoading) return;
 
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                  ('standalone' in window.navigator && (window.navigator as NavigatorWithStandalone).standalone === true);
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                   ('standalone' in window.navigator && (window.navigator as NavigatorWithStandalone).standalone === true);
+    
     const pathView = getViewFromPath(window.location.pathname);
 
     if (hasValidSession) {
       if (hasPostLoginDataRefresh()) return;
 
       const nextView = !pathView || pathView === 'landing' || pathView === 'login' ? 'dashboard' : pathView;
+      
       if (nextView === 'dashboard' && window.location.pathname !== viewPaths.dashboard) {
-        window.location.href = viewPaths.dashboard;
+        defer(() => navigateToView('dashboard', true));
         return;
       }
+
       defer(() => navigateToView(nextView, true));
       return;
     }
