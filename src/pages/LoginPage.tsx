@@ -1,6 +1,6 @@
 // src/pages/LoginPage.tsx
 import { FormEvent, useEffect, useState } from 'react';
-import { ArrowRight, Lock, Mail, User } from 'lucide-react';
+import { ArrowRight, Lock, Mail, User, Eye, EyeOff } from 'lucide-react';
 import VitaraLogo from '@/components/ui/VitaraLogo';
 import PopupAlert, { PopupState } from '@/components/ui/PopupAlert';
 import { isApiConfigured, vitaraApi } from '@/services/api';
@@ -25,11 +25,15 @@ const initialPopup: PopupState = {
 
 export default function LoginPage() {
   const { establishSession, clearCachedPageData } = useStore();
+
   const [isLoginView, setIsLoginView] = useState<boolean>(true);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+
   const [fullName, setFullName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+
   const [isEmailLoading, setIsEmailLoading] = useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
   const [popup, setPopup] = useState<PopupState>(initialPopup);
@@ -52,7 +56,6 @@ export default function LoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search || window.location.hash.replace('#', '?'));
     const errorDescription = params.get('error_description') || params.get('error');
-
     if (errorDescription) {
       window.setTimeout(() => {
         showPopup('error', 'Login Google gagal', getFriendlyAuthError(decodeURIComponent(errorDescription).replace(/\+/g, ' ')));
@@ -86,13 +89,20 @@ export default function LoginPage() {
       if (!isLoginView) {
         const emailValue = email.trim();
         const fallbackName = emailValue.split('@')[0] || 'vitara-user';
-
+        
         await vitaraApi.signup({
           username: fallbackName,
           fullName: fullName.trim() || fallbackName,
           email: emailValue,
           password,
         });
+
+        setIsEmailLoading(false);
+        setFullName('');
+        setPassword('');
+        setIsLoginView(true);
+        showPopup('success', 'Pendaftaran Berhasil!', 'Akun kamu telah berhasil dibuat. Silakan masuk untuk melanjutkan.');
+        return; 
       }
 
       const tokens = await vitaraApi.login({
@@ -102,15 +112,16 @@ export default function LoginPage() {
 
       const hydratedUser = await establishSession(tokens);
       if (!hydratedUser.uid) throw new Error('Profile hydration failed.');
+      
       clearCachedPageData();
       markPostLoginPreparation();
       window.location.replace('/dashboard');
+
     } catch (error) {
       if (isLoginView) {
         showPopup('error', 'Login gagal', 'Email atau kata sandi salah.');
         return;
       }
-
       showPopup('error', 'Daftar akun gagal', getFriendlyAuthError(error));
     } finally {
       setIsEmailLoading(false);
@@ -122,9 +133,7 @@ export default function LoginPage() {
       showPopup('error', 'Login belum tersedia', 'Backend API belum dikonfigurasi. Set VITE_API_URL lalu coba lagi.');
       return;
     }
-
     setIsGoogleLoading(true);
-
     try {
       const authUrl = await vitaraApi.getGoogleAuthUrl();
       window.location.assign(authUrl);
@@ -139,7 +148,6 @@ export default function LoginPage() {
       <PopupAlert {...popup} onClose={() => setPopup(initialPopup)} />
       
       <div className="absolute inset-0 pointer-events-none opacity-[0.03] mix-blend-overlay z-0" style={{ filter: 'url(#noiseFilter)' }}></div>
-
       <div className="absolute top-[10%] md:top-[20%] left-[10%] md:left-[20%] w-[60vw] h-[60vw] md:w-[30vw] md:h-[30vw] bg-[#1DB38A] dark:bg-[#8CE0A7] rounded-full blur-[100px] md:blur-[120px] opacity-20 dark:opacity-10 animate-ambient pointer-events-none z-0"></div>
       <div className="absolute bottom-[5%] md:bottom-[10%] right-[10%] md:right-[20%] w-[50vw] h-[50vw] md:w-[25vw] md:h-[25vw] bg-[#FF9F66] rounded-full blur-[100px] md:blur-[120px] opacity-10 animate-ambient pointer-events-none z-0" style={{ animationDelay: '3s', animationDirection: 'reverse' }}></div>
 
@@ -196,23 +204,23 @@ export default function LoginPage() {
                 <Lock size={18} strokeWidth={2.5} />
               </div>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Kata Sandi"
                 required
                 disabled={isAuthenticating}
-                className="w-full bg-white/50 dark:bg-stone-800/40 border border-[#E8F0EA] dark:border-stone-700/50 rounded-[20px] py-3.5 pl-12 pr-4 text-[14px] font-bold text-[#2B4B3D] dark:text-stone-100 placeholder-[#8CAAB8]/70 focus:outline-none focus:border-[#1DB38A] dark:focus:border-[#8CE0A7] focus:ring-1 focus:ring-[#1DB38A] dark:focus:ring-[#8CE0A7] transition-all backdrop-blur-sm disabled:opacity-70"
+                className="w-full bg-white/50 dark:bg-stone-800/40 border border-[#E8F0EA] dark:border-stone-700/50 rounded-[20px] py-3.5 pl-12 pr-12 text-[14px] font-bold text-[#2B4B3D] dark:text-stone-100 placeholder-[#8CAAB8]/70 focus:outline-none focus:border-[#1DB38A] dark:focus:border-[#8CE0A7] focus:ring-1 focus:ring-[#1DB38A] dark:focus:ring-[#8CE0A7] transition-all backdrop-blur-sm disabled:opacity-70"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8CAAB8] dark:text-stone-500 hover:text-[#1DB38A] dark:hover:text-[#8CE0A7] focus:outline-none transition-colors"
+                aria-label={showPassword ? 'Sembunyikan sandi' : 'Tampilkan sandi'}
+              >
+                {showPassword ? <EyeOff size={18} strokeWidth={2.5} /> : <Eye size={18} strokeWidth={2.5} />}
+              </button>
             </div>
-
-            {isLoginView && (
-              <div className="flex justify-end">
-                <button type="button" className="text-[12px] font-bold text-[#1DB38A] dark:text-[#8CE0A7] hover:underline focus:outline-none">
-                  Lupa kata sandi?
-                </button>
-              </div>
-            )}
 
             <button
               type="submit"

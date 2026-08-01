@@ -1,6 +1,6 @@
 // src/components/landing/FeaturesSection.tsx
 import { useRef, useState, MouseEvent as ReactMouseEvent } from 'react';
-import { ArrowRight, Brain, Activity, Utensils, Moon, LucideIcon } from 'lucide-react';
+import { ArrowRight, Brain, Activity, Utensils, Moon, HeartPulse, LucideIcon } from 'lucide-react';
 
 interface FeatureItem {
   icon: LucideIcon;
@@ -11,6 +11,7 @@ interface FeatureItem {
   delay: string;
   bento: string;
   desc: string;
+  isHighlight?: boolean;
 }
 
 interface BentoCardProps {
@@ -37,6 +38,13 @@ function BentoCard({ feature }: BentoCardProps) {
     setTransformStyle(`perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale3d(1.02, 1.02, 1.02)`);
   };
 
+  // Pewarnaan khusus jika card di-highlight (seperti Health Score)
+  const titleColor = feature.isHighlight ? "text-white" : "text-[#2B4B3D] dark:text-stone-100";
+  const descColor = feature.isHighlight ? "text-white/80" : "text-[#8CAAB8] dark:text-stone-400";
+  const arrowColor = feature.isHighlight
+    ? "border-white/20 text-white/40 group-hover:text-white"
+    : "border-black/5 dark:border-white/5 text-black/20 dark:text-white/20 group-hover:text-[#2B4B3D] dark:group-hover:text-[#8CE0A7]";
+
   return (
     <div
       ref={cardRef}
@@ -51,11 +59,13 @@ function BentoCard({ feature }: BentoCardProps) {
         <div className={`w-10 h-10 md:w-12 md:h-12 ${feature.icBg} ${feature.icC} rounded-[16px] flex items-center justify-center shrink-0 shadow-sm group-hover:rotate-6 transition-transform duration-300`}>
           <feature.icon className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2.2} />
         </div>
-        <div className="w-8 h-8 rounded-full border border-black/5 dark:border-white/5 flex items-center justify-center text-black/20 dark:text-white/20 group-hover:text-[#2B4B3D] dark:group-hover:text-[#8CE0A7] transition-colors"><ArrowRight size={14} /></div>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${arrowColor}`}>
+          <ArrowRight size={14} />
+        </div>
       </div>
       <div className="relative z-10">
-        <h3 className="text-[20px] md:text-[24px] font-extrabold text-[#2B4B3D] dark:text-stone-100 mb-2">{feature.title}</h3>
-        <p className="text-[#8CAAB8] dark:text-stone-400 text-[13px] md:text-[14px] font-medium leading-[1.6] line-clamp-3">{feature.desc}</p>
+        <h3 className={`text-[20px] md:text-[24px] font-extrabold mb-2 ${titleColor}`}>{feature.title}</h3>
+        <p className={`text-[13px] md:text-[14px] font-medium leading-[1.6] line-clamp-3 ${descColor}`}>{feature.desc}</p>
       </div>
     </div>
   );
@@ -63,22 +73,76 @@ function BentoCard({ feature }: BentoCardProps) {
 
 export default function FeaturesSection() {
   const features: FeatureItem[] = [
-    { icon: Brain, bgC: "bg-[#E8F0EA] dark:bg-stone-800/60", icBg: "bg-white dark:bg-stone-700", icC: "text-[#2B7A50] dark:text-[#8CE0A7]", title: "Mood & Mental", delay: "delay-100", bento: "md:col-span-2 md:row-span-2", desc: "Cukup tulis apa yang kamu rasakan tanpa format rumit. Vitara membantu memahami pola pikiranmu dari waktu ke waktu layaknya bercerita ke teman." },
-    { icon: Activity, bgC: "bg-[#FFF0E6] dark:bg-stone-800/60", icBg: "bg-white dark:bg-stone-700", icC: "text-[#C4621A] dark:text-[#FF9F66]", title: "Stress Radar", delay: "delay-200", bento: "md:col-span-1 md:row-span-1", desc: "Tanda kecil sering terlewat. Sadari lebih awal." },
-    { icon: Utensils, bgC: "bg-[#FFF9E6] dark:bg-stone-800/60", icBg: "bg-white dark:bg-stone-700", icC: "text-[#8A6800] dark:text-[#FFD966]", title: "Nutrition", delay: "delay-300", bento: "md:col-span-1 md:row-span-1", desc: "Log makanan instan menggunakan analisis Vision AI." },
-    { icon: Moon, bgC: "bg-[#EEF2F5] dark:bg-stone-800/60", icBg: "bg-white dark:bg-stone-700", icC: "text-[#3A6B7C] dark:text-[#A3C4D1]", title: "Sleep Cycle", delay: "delay-400", bento: "md:col-span-3 md:row-span-1", desc: "Bukan cuma durasi. Tapi kualitas pemulihan yang bisa kamu rasakan bedanya keesokan harinya." },
+    { 
+      icon: HeartPulse, 
+      bgC: "bg-[#2B4B3D] dark:bg-[#1A2620]", 
+      icBg: "bg-[#8CE0A7]/20 dark:bg-[#8CE0A7]/10", 
+      icC: "text-[#8CE0A7]", 
+      title: "1 Holistic Health Score", 
+      delay: "delay-100", 
+      bento: "md:col-span-2 md:row-span-2", 
+      desc: "4 Pilar (Mental, Nutrisi, Tidur, Stres) dianalisis dan digabungkan oleh AI menjadi satu skor kesehatan harian. Pahami gambaran besar kondisimu dalam sekali lihat tanpa ribet.",
+      isHighlight: true 
+    },
+    { 
+      icon: Brain, 
+      bgC: "bg-[#E8F0EA] dark:bg-stone-800/60", 
+      icBg: "bg-white dark:bg-stone-700", 
+      icC: "text-[#2B7A50] dark:text-[#8CE0A7]", 
+      title: "Mood & Mental", 
+      delay: "delay-200", 
+      bento: "md:col-span-1 md:row-span-1", 
+      desc: "Pahami pola pikiran dan emosimu layaknya bercerita ke teman." 
+    },
+    { 
+      icon: Activity, 
+      bgC: "bg-[#FFF0E6] dark:bg-stone-800/60", 
+      icBg: "bg-white dark:bg-stone-700", 
+      icC: "text-[#C4621A] dark:text-[#FF9F66]", 
+      title: "Stress Radar", 
+      delay: "delay-300", 
+      bento: "md:col-span-1 md:row-span-1", 
+      desc: "Deteksi tanda-tanda stres tersembunyi dari ritme aktivitasmu sebelum memburuk." 
+    },
+    { 
+      icon: Utensils, 
+      bgC: "bg-[#FFF9E6] dark:bg-stone-800/60", 
+      icBg: "bg-white dark:bg-stone-700", 
+      icC: "text-[#8A6800] dark:text-[#FFD966]", 
+      title: "Nutrition", 
+      delay: "delay-400", 
+      bento: "md:col-span-2 md:row-span-1", 
+      desc: "Tinggal foto, biarkan Vision AI yang menghitung estimasi kalorinya." 
+    },
+    { 
+      icon: Moon, 
+      bgC: "bg-[#EEF2F5] dark:bg-stone-800/60", 
+      icBg: "bg-white dark:bg-stone-700", 
+      icC: "text-[#3A6B7C] dark:text-[#A3C4D1]", 
+      title: "Sleep Cycle", 
+      delay: "delay-500", 
+      bento: "md:col-span-1 md:row-span-1", 
+      desc: "Pantau kualitas pemulihanmu, bukan sekadar durasi tidur semata." 
+    },
   ];
 
   return (
     <div className="bg-[#FAF9F6] dark:bg-[#121413] w-full relative shrink-0 transition-colors duration-300">
       <div className="w-full max-w-7xl mx-auto px-6 md:px-16 lg:px-24 py-16 md:py-24 relative z-20">
+        
         <div className="reveal-on-scroll opacity-0 translate-y-12 transition-all duration-700 ease-out">
-          <div className="inline-block bg-[#FF9F66]/20 text-[#B35A1A] dark:text-[#FF9F66] px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs font-extrabold uppercase tracking-[0.08em] mb-3 md:mb-4 border border-[#FF9F66]/30">4 Things That Matter</div>
-          <h2 className="text-[32px] md:text-[52px] font-black text-[#2B4B3D] dark:text-stone-50 tracking-[-0.02em] mb-8 md:mb-12 leading-[1.1]">Small inputs.<br/>Big clarity.</h2>
+          <div className="inline-block bg-[#FF9F66]/20 text-[#B35A1A] dark:text-[#FF9F66] px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs font-extrabold uppercase tracking-[0.08em] mb-3 md:mb-4 border border-[#FF9F66]/30">
+            4 Pillars, 1 Score
+          </div>
+          <h2 className="text-[32px] md:text-[52px] font-black text-[#2B4B3D] dark:text-stone-50 tracking-[-0.02em] mb-8 md:mb-12 leading-[1.1]">
+            Small inputs.<br/>Holistic output.
+          </h2>
         </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 auto-rows-[180px]">
           {features.map((f, i) => <BentoCard key={i} feature={f} />)}
         </div>
+
       </div>
     </div>
   );
